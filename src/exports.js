@@ -1,7 +1,10 @@
 (function( jQuery ) {
 
-// Expose jQuery to the global object
-window.jQuery = window.$ = jQuery;
+var Foundry = window.Foundry = window.sQuery = jQuery.noConflict(true);
+
+Foundry.run = function(command) {
+	return (Foundry.isFunction(command)) ? command(Foundry) : null;
+};
 
 // Expose jQuery as an AMD module, but only for AMD loaders that
 // understand the issues with loading multiple versions of jQuery
