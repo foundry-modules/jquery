@@ -46,7 +46,7 @@ DATE=$(shell git log -1 --pretty=format:%ad)
 
 all: update_submodules core
 
-core: jquery min hint size
+core: jquery min hint size foundry
 	@@echo "jQuery build complete."
 
 ${DIST_DIR}:
@@ -133,5 +133,10 @@ pull_submodules:
 
 pull: pull_submodules
 	@@git pull ${REMOTE} ${BRANCH}
+
+foundry:
+	@@echo "Copying built files to foundry..."
+	@@cp ${JQ} ../../scripts_/jquery.js
+	@@cp ${JQ_MIN} ../../scripts/jquery.js
 
 .PHONY: all jquery hint min clean distclean update_submodules pull_submodules pull core
