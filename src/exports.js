@@ -1,5 +1,7 @@
 (function( jQuery ) {
 
+jQuery.version = "@FOUNDRY_VERSION";
+
 window["Foundry/@FOUNDRY_VERSION"] = jQuery.noConflict(true);
 
 jQuery.run = function(command) {
