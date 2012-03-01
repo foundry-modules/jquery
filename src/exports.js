@@ -1,9 +1,9 @@
 (function( jQuery ) {
 
-window["Foundry/2.0"] = jQuery.noConflict(true);
+window["Foundry/@FOUNDRY_VERSION"] = jQuery.noConflict(true);
 
 jQuery.run = function(command) {
-	return (jQuery.isFunction(command)) ? command(Foundry) : null;
+	return (jQuery.isFunction(command)) ? command(jQuery) : null;
 };
 
 // Expose jQuery as an AMD module, but only for AMD loaders that

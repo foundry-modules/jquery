@@ -40,7 +40,9 @@ JQ_MIN = ${DIST_DIR}/jquery.min.js
 SIZZLE_DIR = ${SRC_DIR}/sizzle
 
 JQ_VER = $(shell cat version.txt)
+FD_VER = $(shell cat ../../version)
 VER = sed "s/@VERSION/${JQ_VER}/"
+FDVER = sed "s/@FOUNDRY_VERSION/${FD_VER}/"
 
 DATE=$(shell git log -1 --pretty=format:%ad)
 
@@ -61,6 +63,7 @@ ${JQ}: ${MODULES} | ${DIST_DIR}
 		sed 's/.function..jQuery...{//' | \
 		sed 's/}...jQuery..;//' | \
 		sed 's/@DATE/'"${DATE}"'/' | \
+		${FDVER} | \
 		${VER} > ${JQ};
 
 ${SRC_DIR}/selector.js: ${SIZZLE_DIR}/sizzle.js
