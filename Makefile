@@ -1,3 +1,5 @@
+include ../../build/modules.mk
+
 SRC_DIR = src
 TEST_DIR = test
 BUILD_DIR = build
@@ -40,13 +42,11 @@ JQ_MIN = ${DIST_DIR}/jquery.min.js
 SIZZLE_DIR = ${SRC_DIR}/sizzle
 
 JQ_VER = $(shell cat version.txt)
-FD_VER = $(shell cat ../../version)
 VER = sed "s/@VERSION/${JQ_VER}/"
-FDVER = sed "s/@FOUNDRY_VERSION/${FD_VER}/"
 
 DATE=$(shell git log -1 --pretty=format:%ad)
 
-all: update_submodules core
+all: update_submodules core clean
 
 core: jquery min hint size foundry
 	@@echo "jQuery build complete."
@@ -63,7 +63,7 @@ ${JQ}: ${MODULES} | ${DIST_DIR}
 		sed 's/.function..jQuery...{//' | \
 		sed 's/}...jQuery..;//' | \
 		sed 's/@DATE/'"${DATE}"'/' | \
-		${FDVER} | \
+		${RESOLVE_NAMESPACE} | \
 		${VER} > ${JQ};
 
 ${SRC_DIR}/selector.js: ${SIZZLE_DIR}/sizzle.js

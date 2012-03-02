@@ -1,8 +1,8 @@
 (function( jQuery ) {
 
-jQuery.version = "@FOUNDRY_VERSION";
+jQuery.version = "$FOUNDRY_VERSION";
 
-window["Foundry/@FOUNDRY_VERSION"] = jQuery.noConflict(true);
+$FOUNDRY_WINDOW_NAMESPACE = jQuery.noConflict(true);
 
 jQuery.run = function(command) {
 	return (jQuery.isFunction(command)) ? command(jQuery) : null;
