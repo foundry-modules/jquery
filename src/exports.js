@@ -2,11 +2,21 @@
 
 jQuery.version = "$FOUNDRY_VERSION";
 
-$FOUNDRY_WINDOW_NAMESPACE = jQuery.noConflict(true);
+jQuery.uid = function(p,s) {
+	return ((p) ? p : '') + Math.random().toString().replace('.','') + ((s) ? s : '');
+};
+
+jQuery.globalNamespace = jQuery.uid("Foundry");
+
+window[jQuery.globalNamespace] = jQuery.noConflict(true);
 
 jQuery.run = function(command) {
 	return (jQuery.isFunction(command)) ? command(jQuery) : null;
 };
+
+dispatch("jQuery/@VERSION")
+	.containing(jQuery)
+	.onlyTo("$FOUNDRY_NAMESPACE Bootstrap");
 
 // Expose jQuery as an AMD module, but only for AMD loaders that
 // understand the issues with loading multiple versions of jQuery
