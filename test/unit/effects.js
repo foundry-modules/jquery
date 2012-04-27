@@ -263,6 +263,15 @@ test("animate negative height", function() {
 	});
 });
 
+test("animate negative padding", function() {
+	expect(1);
+	stop();
+	jQuery("#foo").animate({ paddingBottom: -100 }, 100, function() {
+		equal( jQuery(this).css("paddingBottom"), "0px", "Verify paddingBottom." );
+		start();
+	});
+});
+
 test("animate block as inline width/height", function() {
 	expect(3);
 
@@ -1148,7 +1157,7 @@ function( method, defProp ) {
 	test( method + "().stop()." + method + "()", function() {
 		expect( 8 );
 
-		var animTime = 100;
+		var animTime = 2000;
 
 		jQuery.each([ "in", "out" ], function( i, type ) {
 			var $elem = jQuery( "#" + method.toLowerCase() + type ),

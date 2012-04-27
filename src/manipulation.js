@@ -24,7 +24,7 @@ var nodeNames = "abbr|article|aside|audio|bdi|canvas|data|datalist|details|figca
 	rhtml = /<|&#?\w+;/,
 	rnoInnerhtml = /<(?:script|style)/i,
 	rnocache = /<(?:script|object|embed|option|style)/i,
-	rnoshimcache = new RegExp("<(?:" + nodeNames + ")", "i"),
+	rnoshimcache = new RegExp("<(?:" + nodeNames + ")[\\s/>]", "i"),
 	// checked="checked" or checked
 	rchecked = /checked\s*(?:[^=]|=\s*.checked.)/i,
 	rscriptType = /\/(java|ecma)script/i,
@@ -351,6 +351,8 @@ jQuery.fn.extend({
 				jQuery.each( scripts, function( i, elem ) {
 					if ( elem.src ) {
 						jQuery.ajax({
+							type: "GET",
+							global: false,
 							url: elem.src,
 							async: false,
 							dataType: "script"
@@ -456,12 +458,16 @@ function cloneFixAttributes( src, dest ) {
 	// cloning other types of input fields
 	} else if ( nodeName === "input" || nodeName === "textarea" ) {
 		dest.defaultValue = src.defaultValue;
+
+	// IE blanks contents when cloning scripts
+	} else if ( nodeName === "script" && dest.text !== src.text ) {
+		dest.text = src.text;
 	}
 
 	// Event data gets referenced instead of copied if the expando
 	// gets copied too
 	dest.removeAttribute( jQuery.expando );
-	
+
 	// Clear flags for bubbling special change/submit events, they must
 	// be reattached when the newly cloned events are first activated
 	dest.removeAttribute( "_submit_attached" );
@@ -590,7 +596,7 @@ jQuery.extend({
 			destElements,
 			i,
 			// IE<=8 does not properly clone detached, unknown element nodes
-			clone = jQuery.support.html5Clone || !rnoshimcache.test( "<" + elem.nodeName ) ?
+			clone = jQuery.support.html5Clone || jQuery.isXMLDoc(elem) || !rnoshimcache.test( "<" + elem.nodeName + ">" ) ?
 				elem.cloneNode( true ) :
 				shimCloneNode( elem );
 
@@ -640,7 +646,8 @@ jQuery.extend({
 	},
 
 	clean: function( elems, context, fragment, scripts ) {
-		var checkScriptType;
+		var checkScriptType, script, j,
+				ret = [];
 
 		context = context || document;
 
@@ -648,8 +655,6 @@ jQuery.extend({
 		if ( typeof context.createElement === "undefined" ) {
 			context = context.ownerDocument || context[0] && context[0].ownerDocument || document;
 		}
-
-		var ret = [], j;
 
 		for ( var i = 0, elem; (elem = elems[i]) != null; i++ ) {
 			if ( typeof elem === "number" ) {
@@ -672,7 +677,9 @@ jQuery.extend({
 					var tag = ( rtagName.exec( elem ) || ["", ""] )[1].toLowerCase(),
 						wrap = wrapMap[ tag ] || wrapMap._default,
 						depth = wrap[0],
-						div = context.createElement("div");
+						div = context.createElement("div"),
+						safeChildNodes = safeFragment.childNodes,
+						remove;
 
 					// Append wrapper element to unknown element safe doc fragment
 					if ( context === document ) {
@@ -717,6 +724,21 @@ jQuery.extend({
 					}
 
 					elem = div.childNodes;
+
+					// Clear elements from DocumentFragment (safeFragment or otherwise)
+					// to avoid hoarding elements. Fixes #11356
+					if ( div ) {
+						div.parentNode.removeChild( div );
+
+						// Guard against -1 index exceptions in FF3.6
+						if ( safeChildNodes.length > 0 ) {
+							remove = safeChildNodes[ safeChildNodes.length - 1 ];
+
+							if ( remove && remove.parentNode ) {
+								remove.parentNode.removeChild( remove );
+							}
+						}
+					}
 				}
 			}
 
@@ -745,16 +767,17 @@ jQuery.extend({
 				return !elem.type || rscriptType.test( elem.type );
 			};
 			for ( i = 0; ret[i]; i++ ) {
-				if ( scripts && jQuery.nodeName( ret[i], "script" ) && (!ret[i].type || ret[i].type.toLowerCase() === "text/javascript") ) {
-					scripts.push( ret[i].parentNode ? ret[i].parentNode.removeChild( ret[i] ) : ret[i] );
+				script = ret[i];
+				if ( scripts && jQuery.nodeName( script, "script" ) && (!script.type || rscriptType.test( script.type )) ) {
+					scripts.push( script.parentNode ? script.parentNode.removeChild( script ) : script );
 
 				} else {
-					if ( ret[i].nodeType === 1 ) {
-						var jsTags = jQuery.grep( ret[i].getElementsByTagName( "script" ), checkScriptType );
+					if ( script.nodeType === 1 ) {
+						var jsTags = jQuery.grep( script.getElementsByTagName( "script" ), checkScriptType );
 
 						ret.splice.apply( ret, [i + 1, 0].concat( jsTags ) );
 					}
-					fragment.appendChild( ret[i] );
+					fragment.appendChild( script );
 				}
 			}
 		}
