@@ -6,12 +6,6 @@ var jQuery = function( selector, context ) {
 		return new jQuery.fn.init( selector, context, rootjQuery );
 	},
 
-	// Map over jQuery in case of overwrite
-	_jQuery = window.jQuery,
-
-	// Map over the $ in case of overwrite
-	_$ = window.$,
-
 	// A central reference to the root jQuery(document)
 	rootjQuery,
 
@@ -366,14 +360,6 @@ jQuery.extend = jQuery.fn.extend = function() {
 
 jQuery.extend({
 	noConflict: function( deep ) {
-		if ( window.$ === jQuery ) {
-			window.$ = _$;
-		}
-
-		if ( deep && window.jQuery === jQuery ) {
-			window.jQuery = _jQuery;
-		}
-
 		return jQuery;
 	},
 
