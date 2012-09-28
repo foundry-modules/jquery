@@ -202,9 +202,11 @@ test("filter(Selector|undefined)", function() {
 test("filter(Function)", function() {
 	expect(2);
 
-	deepEqual( jQuery("#qunit-fixture p").filter(function() { return !jQuery("a", this).length }).get(), q("sndp", "first"), "filter(Function)" );
+	deepEqual( jQuery("#qunit-fixture p").filter(function() {
+		return !jQuery("a", this).length;
+	}).get(), q("sndp", "first"), "filter(Function)" );
 
-	deepEqual( jQuery("#qunit-fixture p").filter(function(i, elem) { return !jQuery("a", elem).length }).get(), q("sndp", "first"), "filter(Function) using arg" );
+	deepEqual( jQuery("#qunit-fixture p").filter(function(i, elem) { return !jQuery("a", elem).length; }).get(), q("sndp", "first"), "filter(Function) using arg" );
 });
 
 test("filter(Element)", function() {
@@ -273,7 +275,8 @@ test("filter() with positional selectors", function() {
 });
 
 test("closest()", function() {
-	expect(13);
+	expect( 14 );
+
 	deepEqual( jQuery("body").closest("body").get(), q("body"), "closest(body)" );
 	deepEqual( jQuery("body").closest("html").get(), q("html"), "closest(html)" );
 	deepEqual( jQuery("body").closest("div").get(), [], "closest(div)" );
@@ -297,18 +300,8 @@ test("closest()", function() {
 	// Bug #7369
 	equal( jQuery("<div foo='bar'></div>").closest("[foo]").length, 1, "Disconnected nodes with attribute selector" );
 	equal( jQuery("<div>text</div>").closest("[lang]").length, 0, "Disconnected nodes with text and non-existent attribute selector" );
-});
 
-test("closest(Array)", function() {
-	expect(7);
-	deepEqual( jQuery("body").closest(["body"]), [{selector:"body", elem:document.body, level:1}], "closest([body])" );
-	deepEqual( jQuery("body").closest(["html"]), [{selector:"html", elem:document.documentElement, level:2}], "closest([html])" );
-	deepEqual( jQuery("body").closest(["div"]), [], "closest([div])" );
-	deepEqual( jQuery("#yahoo").closest(["div"]), [{"selector":"div", "elem": document.getElementById("foo"), "level": 3}, { "selector": "div", "elem": document.getElementById("qunit-fixture"), "level": 4 }], "closest([div])" );
-	deepEqual( jQuery("#qunit-fixture").closest(["span,#html"]), [{selector:"span,#html", elem:document.documentElement, level:4}], "closest([span,#html])" );
-
-	deepEqual( jQuery("body").closest(["body","html"]), [{selector:"body", elem:document.body, level:1}, {selector:"html", elem:document.documentElement, level:2}], "closest([body, html])" );
-	deepEqual( jQuery("body").closest(["span","html"]), [{selector:"html", elem:document.documentElement, level:2}], "closest([body, html])" );
+	ok( !jQuery(document).closest("#foo").length, "Calling closest on a document fails silently" );
 });
 
 test("closest(jQuery)", function() {
@@ -353,7 +346,7 @@ test("not(Element)", function() {
 });
 
 test("not(Function)", function() {
-	deepEqual( jQuery("#qunit-fixture p").not(function() { return jQuery("a", this).length }).get(), q("sndp", "first"), "not(Function)" );
+	deepEqual( jQuery("#qunit-fixture p").not(function() { return jQuery("a", this).length; }).get(), q("sndp", "first"), "not(Function)" );
 });
 
 test("not(Array)", function() {
@@ -370,33 +363,45 @@ test("not(jQuery)", function() {
 });
 
 test("has(Element)", function() {
-	expect(2);
+	expect(3);
 
 	var obj = jQuery("#qunit-fixture").has(jQuery("#sndp")[0]);
 	deepEqual( obj.get(), q("qunit-fixture"), "Keeps elements that have the element as a descendant" );
+
+	var detached = jQuery("<a><b><i/></b></a>");
+	deepEqual( detached.has( detached.find("i")[0] ).get(), detached.get(), "...Even when detached" );
 
 	var multipleParent = jQuery("#qunit-fixture, #header").has(jQuery("#sndp")[0]);
 	deepEqual( obj.get(), q("qunit-fixture"), "Does not include elements that do not have the element as a descendant" );
 });
 
 test("has(Selector)", function() {
-	expect(3);
+	expect( 5 );
 
 	var obj = jQuery("#qunit-fixture").has("#sndp");
 	deepEqual( obj.get(), q("qunit-fixture"), "Keeps elements that have any element matching the selector as a descendant" );
 
+	var detached = jQuery("<a><b><i/></b></a>");
+	deepEqual( detached.has("i").get(), detached.get(), "...Even when detached" );
+
 	var multipleParent = jQuery("#qunit-fixture, #header").has("#sndp");
-	deepEqual( obj.get(), q("qunit-fixture"), "Does not include elements that do not have the element as a descendant" );
+	deepEqual( multipleParent.get(), q("qunit-fixture"), "Does not include elements that do not have the element as a descendant" );
+
+	multipleParent = jQuery("#select1, #select2, #select3").has("#option1a, #option3a");
+	deepEqual( multipleParent.get(), q("select1", "select3"), "Multiple contexts are checks correctly" );
 
 	var multipleHas = jQuery("#qunit-fixture").has("#sndp, #first");
 	deepEqual( multipleHas.get(), q("qunit-fixture"), "Only adds elements once" );
 });
 
 test("has(Arrayish)", function() {
-	expect(3);
+	expect(4);
 
 	var simple = jQuery("#qunit-fixture").has(jQuery("#sndp"));
 	deepEqual( simple.get(), q("qunit-fixture"), "Keeps elements that have any element in the jQuery list as a descendant" );
+
+	var detached = jQuery("<a><b><i/></b></a>");
+	deepEqual( detached.has( detached.find("i") ).get(), detached.get(), "...Even when detached" );
 
 	var multipleParent = jQuery("#qunit-fixture, #header").has(jQuery("#sndp"));
 	deepEqual( multipleParent.get(), q("qunit-fixture"), "Does not include elements that do not have an element in the jQuery list as a descendant" );
@@ -405,12 +410,13 @@ test("has(Arrayish)", function() {
 	deepEqual( simple.get(), q("qunit-fixture"), "Only adds elements once" );
 });
 
-test("andSelf()", function() {
-	expect(4);
-	deepEqual( jQuery("#en").siblings().andSelf().get(), q("sndp", "en", "sap"), "Check for siblings and self" );
-	deepEqual( jQuery("#foo").children().andSelf().get(), q("foo", "sndp", "en", "sap"), "Check for children and self" );
-	deepEqual( jQuery("#sndp, #en").parent().andSelf().get(), q("foo","sndp","en"), "Check for parent and self" );
-	deepEqual( jQuery("#groups").parents("p, div").andSelf().get(), q("qunit-fixture", "ap", "groups"), "Check for parents and self" );
+test("addBack()", function() {
+	expect(5);
+	deepEqual( jQuery("#en").siblings().addBack().get(), q("sndp", "en", "sap"), "Check for siblings and self" );
+	deepEqual( jQuery("#foo").children().addBack().get(), q("foo", "sndp", "en", "sap"), "Check for children and self" );
+	deepEqual( jQuery("#sndp, #en").parent().addBack().get(), q("foo","sndp","en"), "Check for parent and self" );
+	deepEqual( jQuery("#groups").parents("p, div").addBack().get(), q("qunit-fixture", "ap", "groups"), "Check for parents and self" );
+	deepEqual( jQuery("#select1 > option").filter(":first-child").addBack(":last-child").get(), q("option1a", "option1d"), "Should contain the last elems plus the *filtered* prior set elements" );
 });
 
 test("siblings([String])", function() {
@@ -467,11 +473,12 @@ test("parentsUntil([String])", function() {
 });
 
 test("next([String])", function() {
-	expect(4);
+	expect(5);
 	equal( jQuery("#ap").next()[0].id, "foo", "Simple next check" );
 	equal( jQuery("#ap").next("div")[0].id, "foo", "Filtered next check" );
 	equal( jQuery("#ap").next("p").length, 0, "Filtered next check, no match" );
 	equal( jQuery("#ap").next("div, p")[0].id, "foo", "Multiple filters" );
+	equal( jQuery("body").next().length, 0, "Simple next check, no match" );
 });
 
 test("prev([String])", function() {
@@ -602,15 +609,15 @@ test("add(String|Element|Array|undefined)", function() {
 	equal( x[0].id, "x1", "Check on-the-fly element1" );
 	equal( x[1].id, "x2", "Check on-the-fly element2" );
 
-	var x = jQuery([]).add(jQuery("<p id='x1'>xxx</p>").appendTo(tmp)[0]).add(jQuery("<p id='x2'>xxx</p>").appendTo(tmp)[0]);
+	x = jQuery([]).add(jQuery("<p id='x1'>xxx</p>").appendTo(tmp)[0]).add(jQuery("<p id='x2'>xxx</p>").appendTo(tmp)[0]);
 	equal( x[0].id, "x1", "Check on-the-fly element1" );
 	equal( x[1].id, "x2", "Check on-the-fly element2" );
 
-	var x = jQuery([]).add(jQuery("<p id='x1'>xxx</p>")).add(jQuery("<p id='x2'>xxx</p>"));
+	x = jQuery([]).add(jQuery("<p id='x1'>xxx</p>")).add(jQuery("<p id='x2'>xxx</p>"));
 	equal( x[0].id, "x1", "Check on-the-fly element1" );
 	equal( x[1].id, "x2", "Check on-the-fly element2" );
 
-	var x = jQuery([]).add("<p id='x1'>xxx</p>").add("<p id='x2'>xxx</p>");
+	x = jQuery([]).add("<p id='x1'>xxx</p>").add("<p id='x2'>xxx</p>");
 	equal( x[0].id, "x1", "Check on-the-fly element1" );
 	equal( x[1].id, "x2", "Check on-the-fly element2" );
 
@@ -642,4 +649,3 @@ test("eq('-1') #10616", function() {
 	equal( $divs.eq( "-1" ).length, 1, "The string '-1' returns a selection that has length 1" );
 	deepEqual( $divs.eq( "-1" ), $divs.eq( -1 ), "String and number -1 match" );
 });
-

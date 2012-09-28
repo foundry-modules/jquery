@@ -1,68 +1,73 @@
-var jQuery = (function() {
+var
+	// A central reference to the root jQuery(document)
+	rootjQuery,
 
-// Define a local copy of jQuery
-var jQuery = function( selector, context ) {
+	// The deferred used on DOM ready
+	readyList,
+
+	// Use the correct document accordingly with window argument (sandbox)
+	document = window.document,
+	location = window.location,
+	navigator = window.navigator,
+
+	// Save a reference to some core methods
+	core_push = Array.prototype.push,
+	core_slice = Array.prototype.slice,
+	core_indexOf = Array.prototype.indexOf,
+	core_toString = Object.prototype.toString,
+	core_hasOwn = Object.prototype.hasOwnProperty,
+	core_trim = String.prototype.trim,
+
+	// Define a local copy of jQuery
+	jQuery = function( selector, context ) {
 		// The jQuery object is actually just the init constructor 'enhanced'
 		return new jQuery.fn.init( selector, context, rootjQuery );
 	},
 
-	// A central reference to the root jQuery(document)
-	rootjQuery,
+	// Used for matching numbers
+	core_pnum = /[\-+]?(?:\d*\.|)\d+(?:[eE][\-+]?\d+|)/.source,
 
-	// A simple way to check for HTML strings or ID strings
+	// Used for detecting and trimming whitespace
+	core_rnotwhite = /\S/,
+	core_rspace = /\s+/,
+
+	// Make sure we trim BOM and NBSP (here's looking at you, Safari 5.0 and IE)
+	rtrim = /^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g,
+
+	// A simple way to check for HTML strings
 	// Prioritize #id over <tag> to avoid XSS via location.hash (#9521)
-	quickExpr = /^(?:[^#<]*(<[\w\W]+>)[^>]*$|#([\w\-]*)$)/,
-
-	// Check if a string has a non-whitespace character in it
-	rnotwhite = /\S/,
-
-	// Used for trimming whitespace
-	trimLeft = /^\s+/,
-	trimRight = /\s+$/,
+	rquickExpr = /^(?:[^#<]*(<[\w\W]+>)[^>]*$|#([\w\-]*)$)/,
 
 	// Match a standalone tag
-	rsingleTag = /^<(\w+)\s*\/?>(?:<\/\1>)?$/,
+	rsingleTag = /^<(\w+)\s*\/?>(?:<\/\1>|)$/,
 
 	// JSON RegExp
 	rvalidchars = /^[\],:{}\s]*$/,
-	rvalidescape = /\\(?:["\\\/bfnrt]|u[0-9a-fA-F]{4})/g,
-	rvalidtokens = /"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g,
 	rvalidbraces = /(?:^|:|,)(?:\s*\[)+/g,
-
-	// Useragent RegExp
-	rwebkit = /(webkit)[ \/]([\w.]+)/,
-	ropera = /(opera)(?:.*version)?[ \/]([\w.]+)/,
-	rmsie = /(msie) ([\w.]+)/,
-	rmozilla = /(mozilla)(?:.*? rv:([\w.]+))?/,
+	rvalidescape = /\\(?:["\\\/bfnrt]|u[\da-fA-F]{4})/g,
+	rvalidtokens = /"[^"\\\r\n]*"|true|false|null|-?(?:\d\d*\.|)\d+(?:[eE][\-+]?\d+|)/g,
 
 	// Matches dashed string for camelizing
-	rdashAlpha = /-([a-z]|[0-9])/ig,
 	rmsPrefix = /^-ms-/,
+	rdashAlpha = /-([\da-z])/gi,
 
 	// Used by jQuery.camelCase as callback to replace()
 	fcamelCase = function( all, letter ) {
 		return ( letter + "" ).toUpperCase();
 	},
 
-	// Keep a UserAgent string for use with jQuery.browser
-	userAgent = navigator.userAgent,
-
-	// For matching the engine and version of the browser
-	browserMatch,
-
-	// The deferred used on DOM ready
-	readyList,
-
-	// The ready event handler
-	DOMContentLoaded,
-
-	// Save a reference to some core methods
-	toString = Object.prototype.toString,
-	hasOwn = Object.prototype.hasOwnProperty,
-	push = Array.prototype.push,
-	slice = Array.prototype.slice,
-	trim = String.prototype.trim,
-	indexOf = Array.prototype.indexOf,
+	// The ready event handler and self cleanup method
+	DOMContentLoaded = function() {
+		if ( document.addEventListener ) {
+			document.removeEventListener( "DOMContentLoaded", DOMContentLoaded, false );
+			jQuery.ready();
+		} else if ( document.readyState === "complete" ) {
+			// we're here because readyState === "complete" in oldIE
+			// which is good enough for us to call the dom ready!
+			document.detachEvent( "onreadystatechange", DOMContentLoaded );
+			jQuery.ready();
+		}
+	},
 
 	// [[Class]] -> type pairs
 	class2type = {};
@@ -72,7 +77,7 @@ jQuery.fn = jQuery.prototype = {
 	init: function( selector, context, rootjQuery ) {
 		var match, elem, ret, doc;
 
-		// Handle $(""), $(null), or $(undefined)
+		// Handle $(""), $(null), $(undefined), $(false)
 		if ( !selector ) {
 			return this;
 		}
@@ -84,55 +89,33 @@ jQuery.fn = jQuery.prototype = {
 			return this;
 		}
 
-		// The body element only exists once, optimize finding it
-		if ( selector === "body" && !context && document.body ) {
-			this.context = document;
-			this[0] = document.body;
-			this.selector = selector;
-			this.length = 1;
-			return this;
-		}
-
 		// Handle HTML strings
 		if ( typeof selector === "string" ) {
-			// Are we dealing with HTML string or an ID?
 			if ( selector.charAt(0) === "<" && selector.charAt( selector.length - 1 ) === ">" && selector.length >= 3 ) {
 				// Assume that strings that start and end with <> are HTML and skip the regex check
 				match = [ null, selector, null ];
 
 			} else {
-				match = quickExpr.exec( selector );
+				match = rquickExpr.exec( selector );
 			}
 
-			// Verify a match, and that no context was specified for #id
+			// Match html or make sure no context is specified for #id
 			if ( match && (match[1] || !context) ) {
 
 				// HANDLE: $(html) -> $(array)
 				if ( match[1] ) {
 					context = context instanceof jQuery ? context[0] : context;
-					doc = ( context ? context.ownerDocument || context : document );
+					doc = ( context && context.nodeType ? context.ownerDocument || context : document );
 
-					// If a single string is passed in and it's a single tag
-					// just do a createElement and skip the rest
-					ret = rsingleTag.exec( selector );
-
-					if ( ret ) {
-						if ( jQuery.isPlainObject( context ) ) {
-							selector = [ document.createElement( ret[1] ) ];
-							jQuery.fn.attr.call( selector, context, true );
-
-						} else {
-							selector = [ doc.createElement( ret[1] ) ];
-						}
-
-					} else {
-						ret = jQuery.buildFragment( [ match[1] ], [ doc ] );
-						selector = ( ret.cacheable ? jQuery.clone(ret.fragment) : ret.fragment ).childNodes;
+					// scripts is true for back-compat
+					selector = jQuery.parseHTML( match[1], doc, true );
+					if ( rsingleTag.test( match[1] ) && jQuery.isPlainObject( context ) ) {
+						this.attr.call( selector, context, true );
 					}
 
 					return jQuery.merge( this, selector );
 
-				// HANDLE: $("#id")
+				// HANDLE: $(#id)
 				} else {
 					elem = document.getElementById( match[2] );
 
@@ -194,7 +177,7 @@ jQuery.fn = jQuery.prototype = {
 	},
 
 	toArray: function() {
-		return slice.call( this, 0 );
+		return core_slice.call( this );
 	},
 
 	// Get the Nth element in the matched element set OR
@@ -212,15 +195,9 @@ jQuery.fn = jQuery.prototype = {
 	// Take an array of elements and push it onto the stack
 	// (returning the new matched element set)
 	pushStack: function( elems, name, selector ) {
+
 		// Build a new jQuery matched element set
-		var ret = this.constructor();
-
-		if ( jQuery.isArray( elems ) ) {
-			push.apply( ret, elems );
-
-		} else {
-			jQuery.merge( ret, elems );
-		}
+		var ret = jQuery.merge( this.constructor(), elems );
 
 		// Add the old object onto the stack (as a reference)
 		ret.prevObject = this;
@@ -245,11 +222,8 @@ jQuery.fn = jQuery.prototype = {
 	},
 
 	ready: function( fn ) {
-		// Attach the listeners
-		jQuery.bindReady();
-
 		// Add the callback
-		readyList.add( fn );
+		jQuery.ready.promise().done( fn );
 
 		return this;
 	},
@@ -270,8 +244,8 @@ jQuery.fn = jQuery.prototype = {
 	},
 
 	slice: function() {
-		return this.pushStack( slice.apply( this, arguments ),
-			"slice", slice.call(arguments).join(",") );
+		return this.pushStack( core_slice.apply( this, arguments ),
+			"slice", core_slice.call(arguments).join(",") );
 	},
 
 	map: function( callback ) {
@@ -286,7 +260,7 @@ jQuery.fn = jQuery.prototype = {
 
 	// For internal use only.
 	// Behaves like an Array's method, not like a jQuery method.
-	push: push,
+	push: core_push,
 	sort: [].sort,
 	splice: [].splice
 };
@@ -381,73 +355,31 @@ jQuery.extend({
 
 	// Handle when the DOM is ready
 	ready: function( wait ) {
-		// Either a released hold or an DOMready/load event and not yet ready
-		if ( (wait === true && !--jQuery.readyWait) || (wait !== true && !jQuery.isReady) ) {
-			// Make sure body exists, at least, in case IE gets a little overzealous (ticket #5443).
-			if ( !document.body ) {
-				return setTimeout( jQuery.ready, 1 );
-			}
 
-			// Remember that the DOM is ready
-			jQuery.isReady = true;
-
-			// If a normal DOM Ready event fired, decrement, and wait if need be
-			if ( wait !== true && --jQuery.readyWait > 0 ) {
-				return;
-			}
-
-			// If there are functions bound, to execute
-			readyList.fireWith( document, [ jQuery ] );
-
-			// Trigger any bound ready events
-			if ( jQuery.fn.trigger ) {
-				jQuery( document ).trigger( "ready" ).off( "ready" );
-			}
-		}
-	},
-
-	bindReady: function() {
-		if ( readyList ) {
+		// Abort if there are pending holds or we're already ready
+		if ( wait === true ? --jQuery.readyWait : jQuery.isReady ) {
 			return;
 		}
 
-		readyList = jQuery.Callbacks( "once memory" );
-
-		// Catch cases where $(document).ready() is called after the
-		// browser event has already occurred.
-		if ( document.readyState === "complete" ) {
-			// Handle it asynchronously to allow scripts the opportunity to delay ready
+		// Make sure body exists, at least, in case IE gets a little overzealous (ticket #5443).
+		if ( !document.body ) {
 			return setTimeout( jQuery.ready, 1 );
 		}
 
-		// Mozilla, Opera and webkit nightlies currently support this event
-		if ( document.addEventListener ) {
-			// Use the handy event callback
-			document.addEventListener( "DOMContentLoaded", DOMContentLoaded, false );
+		// Remember that the DOM is ready
+		jQuery.isReady = true;
 
-			// A fallback to window.onload, that will always work
-			window.addEventListener( "load", jQuery.ready, false );
+		// If a normal DOM Ready event fired, decrement, and wait if need be
+		if ( wait !== true && --jQuery.readyWait > 0 ) {
+			return;
+		}
 
-		// If IE event model is used
-		} else if ( document.attachEvent ) {
-			// ensure firing before onload,
-			// maybe late but safe also for iframes
-			document.attachEvent( "onreadystatechange", DOMContentLoaded );
+		// If there are functions bound, to execute
+		readyList.resolveWith( document, [ jQuery ] );
 
-			// A fallback to window.onload, that will always work
-			window.attachEvent( "onload", jQuery.ready );
-
-			// If IE and not a frame
-			// continually check to see if the document is ready
-			var toplevel = false;
-
-			try {
-				toplevel = window.frameElement == null;
-			} catch(e) {}
-
-			if ( document.documentElement.doScroll && toplevel ) {
-				doScrollCheck();
-			}
+		// Trigger any bound ready events
+		if ( jQuery.fn.trigger ) {
+			jQuery( document ).trigger("ready").off("ready");
 		}
 	},
 
@@ -473,7 +405,7 @@ jQuery.extend({
 	type: function( obj ) {
 		return obj == null ?
 			String( obj ) :
-			class2type[ toString.call(obj) ] || "object";
+			class2type[ core_toString.call(obj) ] || "object";
 	},
 
 	isPlainObject: function( obj ) {
@@ -487,8 +419,8 @@ jQuery.extend({
 		try {
 			// Not own constructor property must be Object
 			if ( obj.constructor &&
-				!hasOwn.call(obj, "constructor") &&
-				!hasOwn.call(obj.constructor.prototype, "isPrototypeOf") ) {
+				!core_hasOwn.call(obj, "constructor") &&
+				!core_hasOwn.call(obj.constructor.prototype, "isPrototypeOf") ) {
 				return false;
 			}
 		} catch ( e ) {
@@ -502,11 +434,12 @@ jQuery.extend({
 		var key;
 		for ( key in obj ) {}
 
-		return key === undefined || hasOwn.call( obj, key );
+		return key === undefined || core_hasOwn.call( obj, key );
 	},
 
 	isEmptyObject: function( obj ) {
-		for ( var name in obj ) {
+		var name;
+		for ( name in obj ) {
 			return false;
 		}
 		return true;
@@ -516,8 +449,32 @@ jQuery.extend({
 		throw new Error( msg );
 	},
 
+	// data: string of html
+	// context (optional): If specified, the fragment will be created in this context, defaults to document
+	// scripts (optional): If true, will include scripts passed in the html string
+	parseHTML: function( data, context, scripts ) {
+		var parsed;
+		if ( !data || typeof data !== "string" ) {
+			return null;
+		}
+		if ( typeof context === "boolean" ) {
+			scripts = context;
+			context = 0;
+		}
+		context = context || document;
+
+		// Single tag
+		if ( (parsed = rsingleTag.exec( data )) ) {
+			return [ context.createElement( parsed[1] ) ];
+		}
+
+		parsed = jQuery.buildFragment( [ data ], context, scripts ? null : [] );
+		return jQuery.merge( [],
+			(parsed.cacheable ? jQuery.clone( parsed.fragment ) : parsed.fragment).childNodes );
+	},
+
 	parseJSON: function( data ) {
-		if ( typeof data !== "string" || !data ) {
+		if ( !data || typeof data !== "string") {
 			return null;
 		}
 
@@ -543,10 +500,10 @@ jQuery.extend({
 
 	// Cross-browser xml parsing
 	parseXML: function( data ) {
-		if ( typeof data !== "string" || !data ) {
+		var xml, tmp;
+		if ( !data || typeof data !== "string" ) {
 			return null;
 		}
-		var xml, tmp;
 		try {
 			if ( window.DOMParser ) { // Standard
 				tmp = new DOMParser();
@@ -571,7 +528,7 @@ jQuery.extend({
 	// Workarounds based on findings by Jim Driscoll
 	// http://weblogs.java.net/blog/driscoll/archive/2009/09/08/eval-javascript-global-context
 	globalEval: function( data ) {
-		if ( data && rnotwhite.test( data ) ) {
+		if ( data && core_rnotwhite.test( data ) ) {
 			// We use execScript on Internet Explorer
 			// We use an anonymous function so that context is window
 			// rather than jQuery in Firefox
@@ -588,25 +545,26 @@ jQuery.extend({
 	},
 
 	nodeName: function( elem, name ) {
-		return elem.nodeName && elem.nodeName.toUpperCase() === name.toUpperCase();
+		return elem.nodeName && elem.nodeName.toLowerCase() === name.toLowerCase();
 	},
 
 	// args is for internal usage only
-	each: function( object, callback, args ) {
-		var name, i = 0,
-			length = object.length,
-			isObj = length === undefined || jQuery.isFunction( object );
+	each: function( obj, callback, args ) {
+		var name,
+			i = 0,
+			length = obj.length,
+			isObj = length === undefined || jQuery.isFunction( obj );
 
 		if ( args ) {
 			if ( isObj ) {
-				for ( name in object ) {
-					if ( callback.apply( object[ name ], args ) === false ) {
+				for ( name in obj ) {
+					if ( callback.apply( obj[ name ], args ) === false ) {
 						break;
 					}
 				}
 			} else {
 				for ( ; i < length; ) {
-					if ( callback.apply( object[ i++ ], args ) === false ) {
+					if ( callback.apply( obj[ i++ ], args ) === false ) {
 						break;
 					}
 				}
@@ -615,71 +573,72 @@ jQuery.extend({
 		// A special, fast, case for the most common use of each
 		} else {
 			if ( isObj ) {
-				for ( name in object ) {
-					if ( callback.call( object[ name ], name, object[ name ] ) === false ) {
+				for ( name in obj ) {
+					if ( callback.call( obj[ name ], name, obj[ name ] ) === false ) {
 						break;
 					}
 				}
 			} else {
 				for ( ; i < length; ) {
-					if ( callback.call( object[ i ], i, object[ i++ ] ) === false ) {
+					if ( callback.call( obj[ i ], i, obj[ i++ ] ) === false ) {
 						break;
 					}
 				}
 			}
 		}
 
-		return object;
+		return obj;
 	},
 
 	// Use native String.trim function wherever possible
-	trim: trim ?
+	trim: core_trim && !core_trim.call("\uFEFF\xA0") ?
 		function( text ) {
 			return text == null ?
 				"" :
-				trim.call( text );
+				core_trim.call( text );
 		} :
 
 		// Otherwise use our own trimming functionality
 		function( text ) {
 			return text == null ?
 				"" :
-				text.toString().replace( trimLeft, "" ).replace( trimRight, "" );
+				( text + "" ).replace( rtrim, "" );
 		},
 
 	// results is for internal usage only
-	makeArray: function( array, results ) {
-		var ret = results || [];
+	makeArray: function( arr, results ) {
+		var type,
+			ret = results || [];
 
-		if ( array != null ) {
+		if ( arr != null ) {
 			// The window, strings (and functions) also have 'length'
 			// Tweaked logic slightly to handle Blackberry 4.7 RegExp issues #6930
-			var type = jQuery.type( array );
+			type = jQuery.type( arr );
 
-			if ( array.length == null || type === "string" || type === "function" || type === "regexp" || jQuery.isWindow( array ) ) {
-				push.call( ret, array );
+			if ( arr.length == null || type === "string" || type === "function" || type === "regexp" || jQuery.isWindow( arr ) ) {
+				core_push.call( ret, arr );
 			} else {
-				jQuery.merge( ret, array );
+				jQuery.merge( ret, arr );
 			}
 		}
 
 		return ret;
 	},
 
-	inArray: function( elem, array, i ) {
+	inArray: function( elem, arr, i ) {
 		var len;
 
-		if ( array ) {
-			if ( indexOf ) {
-				return indexOf.call( array, elem, i );
+		if ( arr ) {
+			if ( core_indexOf ) {
+				return core_indexOf.call( arr, elem, i );
 			}
 
-			len = array.length;
+			len = arr.length;
 			i = i ? i < 0 ? Math.max( 0, len + i ) : i : 0;
 
 			for ( ; i < len; i++ ) {
 				// Skip accessing in sparse arrays
-				if ( i in array && array[ i ] === elem ) {
+				if ( i in arr && arr[ i ] === elem ) {
 					return i;
 				}
 			}
@@ -689,11 +648,12 @@ jQuery.extend({
 	},
 
 	merge: function( first, second ) {
-		var i = first.length,
+		var l = second.length,
+			i = first.length,
 			j = 0;
 
-		if ( typeof second.length === "number" ) {
-			for ( var l = second.length; j < l; j++ ) {
+		if ( typeof l === "number" ) {
+			for ( ; j < l; j++ ) {
 				first[ i++ ] = second[ j ];
 			}
 
@@ -709,12 +669,15 @@ jQuery.extend({
 	},
 
 	grep: function( elems, callback, inv ) {
-		var ret = [], retVal;
+		var retVal,
+			ret = [],
+			i = 0,
+			length = elems.length;
 		inv = !!inv;
 
 		// Go through the array, only saving the items
 		// that pass the validator function
-		for ( var i = 0, length = elems.length; i < length; i++ ) {
+		for ( ; i < length; i++ ) {
 			retVal = !!callback( elems[ i ], i );
 			if ( inv !== retVal ) {
 				ret.push( elems[ i ] );
@@ -726,7 +689,8 @@ jQuery.extend({
 
 	// arg is for internal usage only
 	map: function( elems, callback, arg ) {
-		var value, key, ret = [],
+		var value, key,
+			ret = [],
 			i = 0,
 			length = elems.length,
 			// jquery objects are treated as arrays
@@ -763,8 +727,10 @@ jQuery.extend({
 	// Bind a function to a context, optionally partially applying any
 	// arguments.
 	proxy: function( fn, context ) {
+		var tmp, args, proxy;
+
 		if ( typeof context === "string" ) {
-			var tmp = fn[ context ];
+			tmp = fn[ context ];
 			context = fn;
 			fn = tmp;
 		}
@@ -776,13 +742,13 @@ jQuery.extend({
 		}
 
 		// Simulated bind
-		var args = slice.call( arguments, 2 ),
-			proxy = function() {
-				return fn.apply( context, args.concat( slice.call( arguments ) ) );
-			};
+		args = core_slice.call( arguments, 2 );
+		proxy = function() {
+			return fn.apply( context, args.concat( core_slice.call( arguments ) ) );
+		};
 
 		// Set the guid of unique handler to the same of original handler, so it can be removed
-		proxy.guid = fn.guid = fn.guid || proxy.guid || jQuery.guid++;
+		proxy.guid = fn.guid = fn.guid || jQuery.guid++;
 
 		return proxy;
 	},
@@ -842,107 +808,71 @@ jQuery.extend({
 
 	now: function() {
 		return ( new Date() ).getTime();
-	},
-
-	// Use of jQuery.browser is frowned upon.
-	// More details: http://docs.jquery.com/Utilities/jQuery.browser
-	uaMatch: function( ua ) {
-		ua = ua.toLowerCase();
-
-		var match = rwebkit.exec( ua ) ||
-			ropera.exec( ua ) ||
-			rmsie.exec( ua ) ||
-			ua.indexOf("compatible") < 0 && rmozilla.exec( ua ) ||
-			[];
-
-		return { browser: match[1] || "", version: match[2] || "0" };
-	},
-
-	sub: function() {
-		function jQuerySub( selector, context ) {
-			return new jQuerySub.fn.init( selector, context );
-		}
-		jQuery.extend( true, jQuerySub, this );
-		jQuerySub.superclass = this;
-		jQuerySub.fn = jQuerySub.prototype = this();
-		jQuerySub.fn.constructor = jQuerySub;
-		jQuerySub.sub = this.sub;
-		jQuerySub.fn.init = function init( selector, context ) {
-			if ( context && context instanceof jQuery && !(context instanceof jQuerySub) ) {
-				context = jQuerySub( context );
-			}
-
-			return jQuery.fn.init.call( this, selector, context, rootjQuerySub );
-		};
-		jQuerySub.fn.init.prototype = jQuerySub.fn;
-		var rootjQuerySub = jQuerySub(document);
-		return jQuerySub;
-	},
-
-	browser: {}
+	}
 });
+
+jQuery.ready.promise = function( obj ) {
+	if ( !readyList ) {
+
+		readyList = jQuery.Deferred();
+
+		// Catch cases where $(document).ready() is called after the browser event has already occurred.
+		// we once tried to use readyState "interactive" here, but it caused issues like the one
+		// discovered by ChrisS here: http://bugs.jquery.com/ticket/12282#comment:15
+		if ( document.readyState === "complete" ) {
+			// Handle it asynchronously to allow scripts the opportunity to delay ready
+			setTimeout( jQuery.ready, 1 );
+
+		// Standards-based browsers support DOMContentLoaded
+		} else if ( document.addEventListener ) {
+			// Use the handy event callback
+			document.addEventListener( "DOMContentLoaded", DOMContentLoaded, false );
+
+			// A fallback to window.onload, that will always work
+			window.addEventListener( "load", jQuery.ready, false );
+
+		// If IE event model is used
+		} else {
+			// Ensure firing before onload, maybe late but safe also for iframes
+			document.attachEvent( "onreadystatechange", DOMContentLoaded );
+
+			// A fallback to window.onload, that will always work
+			window.attachEvent( "onload", jQuery.ready );
+
+			// If IE and not a frame
+			// continually check to see if the document is ready
+			var top = false;
+
+			try {
+				top = window.frameElement == null && document.documentElement;
+			} catch(e) {}
+
+			if ( top && top.doScroll ) {
+				(function doScrollCheck() {
+					if ( !jQuery.isReady ) {
+
+						try {
+							// Use the trick by Diego Perini
+							// http://javascript.nwbox.com/IEContentLoaded/
+							top.doScroll("left");
+						} catch(e) {
+							return setTimeout( doScrollCheck, 50 );
+						}
+
+						// and execute any waiting functions
+						jQuery.ready();
+					}
+				})();
+			}
+		}
+	}
+	return readyList.promise( obj );
+};
 
 // Populate the class2type map
 jQuery.each("Boolean Number String Function Array Date RegExp Object".split(" "), function(i, name) {
 	class2type[ "[object " + name + "]" ] = name.toLowerCase();
 });
 
-browserMatch = jQuery.uaMatch( userAgent );
-if ( browserMatch.browser ) {
-	jQuery.browser[ browserMatch.browser ] = true;
-	jQuery.browser.version = browserMatch.version;
-}
-
-// Deprecated, use jQuery.browser.webkit instead
-if ( jQuery.browser.webkit ) {
-	jQuery.browser.safari = true;
-}
-
-// IE doesn't match non-breaking spaces with \s
-if ( rnotwhite.test( "\xA0" ) ) {
-	trimLeft = /^[\s\xA0]+/;
-	trimRight = /[\s\xA0]+$/;
-}
-
 // All jQuery objects should point back to these
 rootjQuery = jQuery(document);
-
-// Cleanup functions for the document ready method
-if ( document.addEventListener ) {
-	DOMContentLoaded = function() {
-		document.removeEventListener( "DOMContentLoaded", DOMContentLoaded, false );
-		jQuery.ready();
-	};
-
-} else if ( document.attachEvent ) {
-	DOMContentLoaded = function() {
-		// Make sure body exists, at least, in case IE gets a little overzealous (ticket #5443).
-		if ( document.readyState === "complete" ) {
-			document.detachEvent( "onreadystatechange", DOMContentLoaded );
-			jQuery.ready();
-		}
-	};
-}
-
-// The DOM ready check for Internet Explorer
-function doScrollCheck() {
-	if ( jQuery.isReady ) {
-		return;
-	}
-
-	try {
-		// If IE is used, use the trick by Diego Perini
-		// http://javascript.nwbox.com/IEContentLoaded/
-		document.documentElement.doScroll("left");
-	} catch(e) {
-		setTimeout( doScrollCheck, 1 );
-		return;
-	}
-
-	// and execute any waiting functions
-	jQuery.ready();
-}
-
-return jQuery;
-
-})();

@@ -1,86 +1,4 @@
-(function( jQuery ) {
-
-var getOffset,
-	rtable = /^t(?:able|d|h)$/i,
-	rroot = /^(?:body|html)$/i;
-
-if ( "getBoundingClientRect" in document.documentElement ) {
-	getOffset = function( elem, doc, docElem, box ) {
-		try {
-			box = elem.getBoundingClientRect();
-		} catch(e) {}
-
-		// Make sure we're not dealing with a disconnected DOM node
-		if ( !box || !jQuery.contains( docElem, elem ) ) {
-			return box ? { top: box.top, left: box.left } : { top: 0, left: 0 };
-		}
-
-		var body = doc.body,
-			win = getWindow( doc ),
-			clientTop  = docElem.clientTop  || body.clientTop  || 0,
-			clientLeft = docElem.clientLeft || body.clientLeft || 0,
-			scrollTop  = win.pageYOffset || jQuery.support.boxModel && docElem.scrollTop  || body.scrollTop,
-			scrollLeft = win.pageXOffset || jQuery.support.boxModel && docElem.scrollLeft || body.scrollLeft,
-			top  = box.top  + scrollTop  - clientTop,
-			left = box.left + scrollLeft - clientLeft;
-
-		return { top: top, left: left };
-	};
-
-} else {
-	getOffset = function( elem, doc, docElem ) {
-		var computedStyle,
-			offsetParent = elem.offsetParent,
-			prevOffsetParent = elem,
-			body = doc.body,
-			defaultView = doc.defaultView,
-			prevComputedStyle = defaultView ? defaultView.getComputedStyle( elem, null ) : elem.currentStyle,
-			top = elem.offsetTop,
-			left = elem.offsetLeft;
-
-		while ( (elem = elem.parentNode) && elem !== body && elem !== docElem ) {
-			if ( jQuery.support.fixedPosition && prevComputedStyle.position === "fixed" ) {
-				break;
-			}
-
-			computedStyle = defaultView ? defaultView.getComputedStyle(elem, null) : elem.currentStyle;
-			top  -= elem.scrollTop;
-			left -= elem.scrollLeft;
-
-			if ( elem === offsetParent ) {
-				top  += elem.offsetTop;
-				left += elem.offsetLeft;
-
-				if ( jQuery.support.doesNotAddBorder && !(jQuery.support.doesAddBorderForTableAndCells && rtable.test(elem.nodeName)) ) {
-					top  += parseFloat( computedStyle.borderTopWidth  ) || 0;
-					left += parseFloat( computedStyle.borderLeftWidth ) || 0;
-				}
-
-				prevOffsetParent = offsetParent;
-				offsetParent = elem.offsetParent;
-			}
-
-			if ( jQuery.support.subtractsBorderForOverflowNotVisible && computedStyle.overflow !== "visible" ) {
-				top  += parseFloat( computedStyle.borderTopWidth  ) || 0;
-				left += parseFloat( computedStyle.borderLeftWidth ) || 0;
-			}
-
-			prevComputedStyle = computedStyle;
-		}
-
-		if ( prevComputedStyle.position === "relative" || prevComputedStyle.position === "static" ) {
-			top  += body.offsetTop;
-			left += body.offsetLeft;
-		}
-
-		if ( jQuery.support.fixedPosition && prevComputedStyle.position === "fixed" ) {
-			top  += Math.max( docElem.scrollTop, body.scrollTop );
-			left += Math.max( docElem.scrollLeft, body.scrollLeft );
-		}
-
-		return { top: top, left: left };
-	};
-}
+var rroot = /^(?:body|html)$/i;
 
 jQuery.fn.offset = function( options ) {
 	if ( arguments.length ) {
@@ -91,18 +9,40 @@ jQuery.fn.offset = function( options ) {
 			});
 	}
 
-	var elem = this[0],
+	var docElem, body, win, clientTop, clientLeft, scrollTop, scrollLeft,
+		box = { top: 0, left: 0 },
+		elem = this[ 0 ],
 		doc = elem && elem.ownerDocument;
 
 	if ( !doc ) {
-		return null;
+		return;
 	}
 
-	if ( elem === doc.body ) {
+	if ( (body = doc.body) === elem ) {
 		return jQuery.offset.bodyOffset( elem );
 	}
 
-	return getOffset( elem, doc, doc.documentElement );
+	docElem = doc.documentElement;
+
+	// Make sure it's not a disconnected DOM node
+	if ( !jQuery.contains( docElem, elem ) ) {
+		return box;
+	}
+
+	// If we don't have gBCR, just use 0,0 rather than error
+	// BlackBerry 5, iOS 3 (original iPhone)
+	if ( typeof elem.getBoundingClientRect !== "undefined" ) {
+		box = elem.getBoundingClientRect();
+	}
+	win = getWindow( doc );
+	clientTop  = docElem.clientTop  || body.clientTop  || 0;
+	clientLeft = docElem.clientLeft || body.clientLeft || 0;
+	scrollTop  = win.pageYOffset || docElem.scrollTop;
+	scrollLeft = win.pageXOffset || docElem.scrollLeft;
+	return {
+		top: box.top  + scrollTop  - clientTop,
+		left: box.left + scrollLeft - clientLeft
+	};
 };
 
 jQuery.offset = {
@@ -168,7 +108,7 @@ jQuery.fn.extend({
 
 	position: function() {
 		if ( !this[0] ) {
-			return null;
+			return;
 		}
 
 		var elem = this[0],
@@ -203,7 +143,7 @@ jQuery.fn.extend({
 			while ( offsetParent && (!rroot.test(offsetParent.nodeName) && jQuery.css(offsetParent, "position") === "static") ) {
 				offsetParent = offsetParent.offsetParent;
 			}
-			return offsetParent;
+			return offsetParent || document.body;
 		});
 	}
 });
@@ -219,8 +159,7 @@ jQuery.each( {scrollLeft: "pageXOffset", scrollTop: "pageYOffset"}, function( me
 
 			if ( val === undefined ) {
 				return win ? (prop in win) ? win[ prop ] :
-					jQuery.support.boxModel && win.document.documentElement[ method ] ||
-						win.document.body[ method ] :
+					win.document.documentElement[ method ] :
 					elem[ method ];
 			}
 
@@ -244,5 +183,3 @@ function getWindow( elem ) {
 			elem.defaultView || elem.parentWindow :
 			false;
 }
-
-})( jQuery );

@@ -2,15 +2,34 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr" id="html">
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
 	<title>jQuery Test Suite</title>
 	<link rel="Stylesheet" media="screen" href="qunit/qunit/qunit.css" />
 	<link rel="Stylesheet" media="screen" href="data/testsuite.css" />
 	<!-- Includes -->
+
 	<script src="data/testinit.js"></script>
 
-	<script src="data/include_js.php"></script>
-
 	<script src="qunit/qunit/qunit.js"></script>
+	<!-- Loads minified version if min=true is present in the search -->
+	<!-- Nullifies querySelectorAll if noqsa=true is present -->
+	<script>
+		(function() {
+			var src = "../dist/jquery.js";
+
+			QUnit.config.urlConfig.push( "min" );
+			if ( QUnit.urlParams.min ) {
+				src = "../dist/jquery.min.js";
+			}
+
+			QUnit.config.urlConfig.push( "noqsa" );
+			if ( QUnit.urlParams.noqsa ) {
+				document.querySelectorAll = null;
+			}
+
+			document.write( "<script src='" + src + "'><\/script>" );
+		})();
+	</script>
 	<script src="data/testrunner.js"></script>
 
 	<script src="unit/core.js"></script>
@@ -21,20 +40,26 @@
 	<script src="unit/queue.js"></script>
 	<script src="unit/attributes.js"></script>
 	<script src="unit/event.js"></script>
-	<script src="../src/sizzle/test/unit/selector.js"></script>
 	<script src="unit/selector.js"></script>
 	<script src="unit/traversing.js"></script>
 	<script src="unit/manipulation.js"></script>
 	<script src="unit/css.js"></script>
+	<script src="unit/serialize.js"></script>
 	<script src="unit/ajax.js"></script>
 	<script src="unit/effects.js"></script>
 	<script src="unit/offset.js"></script>
 	<script src="unit/dimensions.js"></script>
+	<script src="unit/deprecated.js"></script>
 	<script src="unit/exports.js"></script>
 
+	<!-- Subproject tests must be last because they replace our test fixture -->
 	<script>
-	// html5shiv, enabling HTML5 elements to be used with jQuery
-		( "abbr article aside audio bdi canvas data details figcaption figure footer header hgroup " +
+		testSubproject( "Sizzle", "../src/sizzle/test/", /^unit\/.*\.js$/ );
+	</script>
+
+	<script>
+		// html5shiv, enabling HTML5 elements to be used with jQuery
+		( "abbr article aside audio bdi canvas data datalist details figcaption figure footer header hgroup " +
 			"mark meter nav output progress section summary time video"
 		).replace(/\w+/g, function(n) {
 			document.createElement(n);
@@ -43,9 +68,7 @@
 </head>
 
 <body id="body">
-	<h1 id="qunit-header"><a href="/jquery/test/index.html">jQuery Test Suite</a>
-		<a href="?jquery=min">(minified)</a>
-	</h1>
+	<h1 id="qunit-header"><a href="/jquery/test/index.html">jQuery Test Suite</a></h1>
 	<h2 id="qunit-banner"></h2>
 	<div id="qunit-testrunner-toolbar"></div>
 	<h2 id="qunit-userAgent"></h2>
@@ -249,6 +272,14 @@ Z</textarea>
 		<div id="siblingTest">
 			<em id="siblingfirst">1</em>
 			<em id="siblingnext">2</em>
+			<em id="siblingthird">
+				<em id="siblingchild">
+					<em id="siblinggrandchild">
+						<em id="siblinggreatgrandchild"></em>
+					</em>
+				</em>
+			</em>
+			<span id="siblingspan"></span>
 		</div>
 	</div>
 	</dl>
@@ -278,6 +309,9 @@ Z</textarea>
 
 		<div id="fx-tests"></div>
 	</div>
+	<map name="imgmap" id="imgmap">
+		<area shape="rect" coords="0,0,200,50">
+	</map>
 
 </body>
 </html>

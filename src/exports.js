@@ -8,7 +8,7 @@ jQuery.uid = function(p,s) {
 
 jQuery.globalNamespace = jQuery.uid("Foundry");
 
-window[jQuery.globalNamespace] = jQuery.noConflict(true);
+window[jQuery.globalNamespace] = jQuery;
 
 jQuery.run = function(command) {
 	return (jQuery.isFunction(command)) ? command(jQuery) : null;

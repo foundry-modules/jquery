@@ -1,8 +1,19 @@
 module("attributes", { teardown: moduleTeardown });
 
-var bareObj = function(value) { return value; };
-var functionReturningObj = function(value) { return (function() { return value; }); };
+var bareObj = function( value ) { return value; };
+var functionReturningObj = function( value ) { return (function() { return value; }); };
 
+/*
+	======== local reference =======
+	bareObj and functionReturningObj can be used to test passing functions to setters
+	See testVal below for an example
+
+	bareObj( value );
+		This function returns whatever value is passed in
+
+	functionReturningObj( value );
+		Returns a function that returns the value
+*/
 
 test("jQuery.propFix integrity test", function() {
 	expect(1);
@@ -12,18 +23,18 @@ test("jQuery.propFix integrity test", function() {
 	//  overwrites don't occur
 	//  This is simply for better code coverage and future proofing.
 	var props = {
-		tabindex: "tabIndex",
-		readonly: "readOnly",
+		"tabindex": "tabIndex",
+		"readonly": "readOnly",
 		"for": "htmlFor",
 		"class": "className",
-		maxlength: "maxLength",
-		cellspacing: "cellSpacing",
-		cellpadding: "cellPadding",
-		rowspan: "rowSpan",
-		colspan: "colSpan",
-		usemap: "useMap",
-		frameborder: "frameBorder",
-		contenteditable: "contentEditable"
+		"maxlength": "maxLength",
+		"cellspacing": "cellSpacing",
+		"cellpadding": "cellPadding",
+		"rowspan": "rowSpan",
+		"colspan": "colSpan",
+		"usemap": "useMap",
+		"frameborder": "frameBorder",
+		"contenteditable": "contentEditable"
 	};
 
 	if ( !jQuery.support.enctype ) {
@@ -127,18 +138,13 @@ test("attr(String)", function() {
 	equal( $form.prop("enctype"), "multipart/form-data", "Set the enctype of a form (encoding in IE6/7 #6743)" );
 });
 
-if ( !isLocal ) {
-	test("attr(String) in XML Files", function() {
-		expect(3);
-		stop();
-		jQuery.get("data/dashboard.xml", function( xml ) {
-			equal( jQuery( "locations", xml ).attr("class"), "foo", "Check class attribute in XML document" );
-			equal( jQuery( "location", xml ).attr("for"), "bar", "Check for attribute in XML document" );
-			equal( jQuery( "location", xml ).attr("checked"), "different", "Check that hooks are not attached in XML document" );
-			start();
-		});
-	});
-}
+test("attr(String) in XML Files", function() {
+	expect(3);
+	var xml = createDashboardXML();
+	equal( jQuery( "locations", xml ).attr("class"), "foo", "Check class attribute in XML document" );
+	equal( jQuery( "location", xml ).attr("for"), "bar", "Check for attribute in XML document" );
+	equal( jQuery( "location", xml ).attr("checked"), "different", "Check that hooks are not attached in XML document" );
+});
 
 test("attr(String, Function)", function() {
 	expect(2);
@@ -149,12 +155,14 @@ test("attr(String, Function)", function() {
 test("attr(Hash)", function() {
 	expect(3);
 	var pass = true;
-	jQuery("div").attr({foo: "baz", zoo: "ping"}).each(function(){
-		if ( this.getAttribute("foo") != "baz" && this.getAttribute("zoo") != "ping" ) pass = false;
+	jQuery("div").attr({"foo": "baz", "zoo": "ping"}).each(function(){
+		if ( this.getAttribute("foo") != "baz" && this.getAttribute("zoo") != "ping" ) {
+			pass = false;
+		}
 	});
 	ok( pass, "Set Multiple Attributes" );
-	equal( jQuery("#text1").attr({value: function() { return this.id; }})[0].value, "text1", "Set attribute to computed value #1" );
-	equal( jQuery("#text1").attr({title: function(i) { return i; }}).attr("title"), "0", "Set attribute to computed value #2");
+	equal( jQuery("#text1").attr({"value": function() { return this["id"]; }})[0].value, "text1", "Set attribute to computed value #1" );
+	equal( jQuery("#text1").attr({"title": function(i) { return i; }}).attr("title"), "0", "Set attribute to computed value #2");
 });
 
 test("attr(String, Object)", function() {
@@ -280,11 +288,11 @@ test("attr(String, Object)", function() {
 	var table = jQuery("#table").append("<tr><td>cell</td></tr><tr><td>cell</td><td>cell</td></tr><tr><td>cell</td><td>cell</td></tr>"),
 		td = table.find("td:first");
 	td.attr("rowspan", "2");
-	equal( td[0].rowSpan, 2, "Check rowspan is correctly set" );
+	equal( td[0]["rowSpan"], 2, "Check rowspan is correctly set" );
 	td.attr("colspan", "2");
-	equal( td[0].colSpan, 2, "Check colspan is correctly set" );
+	equal( td[0]["colSpan"], 2, "Check colspan is correctly set" );
 	table.attr("cellspacing", "2");
-	equal( table[0].cellSpacing, "2", "Check cellspacing is correctly set" );
+	equal( table[0]["cellSpacing"], "2", "Check cellspacing is correctly set" );
 
 	equal( jQuery("#area1").attr("value"), "foobar", "Value attribute retrieves the property for backwards compatibility." );
 
@@ -348,9 +356,12 @@ test("attr(String, Object)", function() {
 	equal( $radio.val(), "sup", "Value is not reset when type is set after value on a radio" );
 
 	// Setting attributes on svg elements (bug #3116)
-	var $svg = jQuery("<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' version='1.1' baseProfile='full' width='200' height='200'>"
-		+ "<circle cx='200' cy='200' r='150' />"
-	+ "</svg>").appendTo("body");
+	var $svg = jQuery(
+		"<svg xmlns='http://www.w3.org/2000/svg'   xmlns:xlink='http://www.w3.org/1999/xlink' version='1.1'  baseProfile='full' width='200' height='200'>" +
+
+			"<circle cx='200' cy='200' r='150' />" +
+			"</svg>"
+		).appendTo("body");
 	equal( $svg.attr("cx", 100).attr("cx"), "100", "Set attribute on svg element" );
 	$svg.remove();
 
@@ -362,109 +373,130 @@ test("attr(String, Object)", function() {
 });
 
 test("attr(jquery_method)", function(){
-	expect(7);
 
 	var $elem = jQuery("<div />"),
-		elem = $elem[0];
+		elem = $elem[0],
+		expected = 2,
+		attrObj = {};
+
+	if ( jQuery.fn.width ) {
+		expected += 2;
+		attrObj["width"] = 10;
+	}
+
+	if ( jQuery.fn.offset ) {
+		expected += 2;
+		attrObj["offset"] = { "top": 1, "left": 0 };
+	}
+
+	if ( jQuery.css ) {
+		expected += 3;
+		attrObj["css"] = { "paddingLeft": 1, "paddingRight": 1 };
+	}
+
+	expect( expected );
 
 	// one at a time
-	$elem.attr({html: "foo"}, true);
-	equal( elem.innerHTML, "foo", "attr(html)");
+	$elem.attr( { "html": "foo" }, true );
+	equal( elem.innerHTML, "foo", "attr(html)" );
 
-	$elem.attr({text: "bar"}, true);
-	equal( elem.innerHTML, "bar", "attr(text)");
-
-	$elem.attr({css: {color: "red"}}, true);
-	ok( /^(#ff0000|red)$/i.test(elem.style.color), "attr(css)");
-
-	$elem.attr({height: 10}, true);
-	equal( elem.style.height, "10px", "attr(height)");
+	$elem.attr( { "text": "bar" }, true );
+	equal( elem.innerHTML, "bar", "attr(text)" );
 
 	// Multiple attributes
+	$elem.attr( attrObj, true );
 
-	$elem.attr({
-		width:10,
-		css:{ paddingLeft:1, paddingRight:1 }
-	}, true);
+	if ( jQuery.fn.width ) {
+		equal( elem.style.width, "10px", "attr({width:})" );
 
-	equal( elem.style.width, "10px", "attr({...})");
-	equal( elem.style.paddingLeft, "1px", "attr({...})");
-	equal( elem.style.paddingRight, "1px", "attr({...})");
+		$elem.attr( { "height": 10 }, true );
+		equal( elem.style.height, "10px", "attr(height)" );
+	}
+
+	if ( jQuery.fn.offset ) {
+		equal( elem.style.top, "1px", "attr({offset:})" );
+
+		$elem.attr( { offset: { top: 1, left: 1 } }, true );
+		equal( elem.style.left, "1px", "attr(offset)" );
+	}
+
+	if ( jQuery.css ) {
+		equal( elem.style.paddingLeft, "1px", "attr({css:})" );
+		equal( elem.style.paddingRight, "1px", "attr({css:})" );
+
+		$elem.attr( { "css": { "color": "red" } }, true );
+		ok( /^(#ff0000|red)$/i.test( elem.style.color ), "attr(css)" );
+	}
 });
 
-if ( !isLocal ) {
-	test("attr(String, Object) - Loaded via XML document", function() {
-		expect(2);
-		stop();
-		jQuery.get("data/dashboard.xml", function( xml ) {
-			var titles = [];
-			jQuery( "tab", xml ).each(function() {
-				titles.push( jQuery(this).attr("title") );
-			});
-			equal( titles[0], "Location", "attr() in XML context: Check first title" );
-			equal( titles[1], "Users", "attr() in XML context: Check second title" );
-			start();
-		});
+test("attr(String, Object) - Loaded via XML document", function() {
+	expect( 2 );
+	var xml = createDashboardXML();
+	var titles = [];
+	jQuery( "tab", xml ).each(function() {
+		titles.push( jQuery(this).attr("title") );
 	});
-}
+	equal( titles[0], "Location", "attr() in XML context: Check first title" );
+	equal( titles[1], "Users", "attr() in XML context: Check second title" );
+});
 
 test("attr('tabindex')", function() {
-	expect(8);
+	expect( 8 );
 
 	// elements not natively tabbable
-	equal(jQuery("#listWithTabIndex").attr("tabindex"), 5, "not natively tabbable, with tabindex set to 0");
-	equal(jQuery("#divWithNoTabIndex").attr("tabindex"), undefined, "not natively tabbable, no tabindex set");
+	equal( jQuery("#listWithTabIndex").attr("tabindex"), "5", "not natively tabbable, with tabindex set to 0" );
+	equal( jQuery("#divWithNoTabIndex").attr("tabindex"), undefined, "not natively tabbable, no tabindex set" );
 
 	// anchor with href
-	equal(jQuery("#linkWithNoTabIndex").attr("tabindex"), 0, "anchor with href, no tabindex set");
-	equal(jQuery("#linkWithTabIndex").attr("tabindex"), 2, "anchor with href, tabindex set to 2");
-	equal(jQuery("#linkWithNegativeTabIndex").attr("tabindex"), -1, "anchor with href, tabindex set to -1");
+	equal( jQuery("#linkWithNoTabIndex").attr("tabindex"), undefined, "anchor with href, no tabindex set" );
+	equal( jQuery("#linkWithTabIndex").attr("tabindex"), "2", "anchor with href, tabindex set to 2" );
+	equal( jQuery("#linkWithNegativeTabIndex").attr("tabindex"), "-1", "anchor with href, tabindex set to -1" );
 
 	// anchor without href
-	equal(jQuery("#linkWithNoHrefWithNoTabIndex").attr("tabindex"), undefined, "anchor without href, no tabindex set");
-	equal(jQuery("#linkWithNoHrefWithTabIndex").attr("tabindex"), 1, "anchor without href, tabindex set to 2");
-	equal(jQuery("#linkWithNoHrefWithNegativeTabIndex").attr("tabindex"), -1, "anchor without href, no tabindex set");
+	equal( jQuery("#linkWithNoHrefWithNoTabIndex").attr("tabindex"), undefined, "anchor without href, no tabindex set" );
+	equal( jQuery("#linkWithNoHrefWithTabIndex").attr("tabindex"), "1", "anchor without href, tabindex set to 2" );
+	equal( jQuery("#linkWithNoHrefWithNegativeTabIndex").attr("tabindex"), "-1", "anchor without href, no tabindex set" );
 });
 
 test("attr('tabindex', value)", function() {
-	expect(9);
+	expect( 9 );
 
 	var element = jQuery("#divWithNoTabIndex");
-	equal(element.attr("tabindex"), undefined, "start with no tabindex");
+	equal( element.attr("tabindex"), undefined, "start with no tabindex" );
 
 	// set a positive string
 	element.attr("tabindex", "1");
-	equal(element.attr("tabindex"), 1, "set tabindex to 1 (string)");
+	equal( element.attr("tabindex"), "1", "set tabindex to 1 (string)" );
 
 	// set a zero string
 	element.attr("tabindex", "0");
-	equal(element.attr("tabindex"), 0, "set tabindex to 0 (string)");
+	equal( element.attr("tabindex"), "0", "set tabindex to 0 (string)" );
 
 	// set a negative string
 	element.attr("tabindex", "-1");
-	equal(element.attr("tabindex"), -1, "set tabindex to -1 (string)");
+	equal( element.attr("tabindex"), "-1", "set tabindex to -1 (string)" );
 
 	// set a positive number
 	element.attr("tabindex", 1);
-	equal(element.attr("tabindex"), 1, "set tabindex to 1 (number)");
+	equal( element.attr("tabindex"), "1", "set tabindex to 1 (number)" );
 
 	// set a zero number
 	element.attr("tabindex", 0);
-	equal(element.attr("tabindex"), 0, "set tabindex to 0 (number)");
+	equal(element.attr("tabindex"), "0", "set tabindex to 0 (number)");
 
 	// set a negative number
 	element.attr("tabindex", -1);
-	equal(element.attr("tabindex"), -1, "set tabindex to -1 (number)");
+	equal( element.attr("tabindex"), "-1", "set tabindex to -1 (number)" );
 
 	element = jQuery("#linkWithTabIndex");
-	equal(element.attr("tabindex"), 2, "start with tabindex 2");
+	equal( element.attr("tabindex"), "2", "start with tabindex 2" );
 
 	element.attr("tabindex", -1);
-	equal(element.attr("tabindex"), -1, "set negative tabindex");
+	equal( element.attr("tabindex"), "-1", "set negative tabindex" );
 });
 
 test("removeAttr(String)", function() {
-	expect( 10 );
+	expect( 12 );
 	var $first;
 
 	equal( jQuery("#mark").removeAttr( "class" ).attr("class"), undefined, "remove class" );
@@ -472,7 +504,7 @@ test("removeAttr(String)", function() {
 	equal( jQuery("#foo").attr("style", "position:absolute;").removeAttr("style").attr("style"), undefined, "Check removing style attribute" );
 	equal( jQuery("#form").attr("style", "position:absolute;").removeAttr("style").attr("style"), undefined, "Check removing style attribute on a form" );
 	equal( jQuery("<div style='position: absolute'></div>").appendTo("#foo").removeAttr("style").prop("style").cssText, "", "Check removing style attribute (#9699 Webkit)" );
-	equal( jQuery("#fx-test-group").attr("height", "3px").removeAttr("height").css("height"), "1px", "Removing height attribute has no effect on height set with style attribute" );
+	equal( jQuery("#fx-test-group").attr("height", "3px").removeAttr("height").get(0).style.height, "1px", "Removing height attribute has no effect on height set with style attribute" );
 
 	jQuery("#check1").removeAttr("checked").prop("checked", true).removeAttr("checked");
 	equal( document.getElementById("check1").checked, false, "removeAttr sets boolean properties to false" );
@@ -488,6 +520,31 @@ test("removeAttr(String)", function() {
 	} catch(e) {
 		ok( false, "Removing contenteditable threw an error (#10429)" );
 	}
+	
+	$first = jQuery("<div Case='mixed'></div>");
+	equal( $first.attr("Case"), "mixed", "case of attribute doesn't matter" );
+	$first.removeAttr("Case");
+	// IE 6/7 return empty string here, not undefined
+	ok( !$first.attr("Case"), "mixed-case attribute was removed" );
+});
+
+test("removeAttr(String) in XML", function() {
+	expect( 7 );
+	var xml = createDashboardXML(),
+		iwt = jQuery( "infowindowtab", xml );
+
+	equal( iwt.attr("normal"), "ab", "Check initial value" );
+	iwt.removeAttr("Normal");
+	equal( iwt.attr("normal"), "ab", "Should still be there" );
+	iwt.removeAttr("normal");
+	equal( iwt.attr("normal"), undefined, "Removed" );
+
+	equal( iwt.attr("mixedCase"), "yes", "Check initial value" );
+	equal( iwt.attr("mixedcase"), undefined, "toLowerCase not work good" );
+	iwt.removeAttr("mixedcase");
+	equal( iwt.attr("mixedCase"), "yes", "Should still be there" );
+	iwt.removeAttr("mixedCase");
+	equal( iwt.attr("mixedCase"), undefined, "Removed" );
 });
 
 test("removeAttr(Multi String, variable space width)", function() {
@@ -547,9 +604,9 @@ test("prop(String, Object)", function() {
 		$body = jQuery( body );
 
 	ok( $body.prop("nextSibling") === null, "Make sure a null expando returns null" );
-	body.foo = "bar";
+	body["foo"] = "bar";
 	equal( $body.prop("foo"), "bar", "Make sure the expando is preferred over the dom attribute" );
-	body.foo = undefined;
+	body["foo"] = undefined;
 	ok( $body.prop("foo") === undefined, "Make sure the expando is preferred over the dom attribute, even if undefined" );
 
 	var select = document.createElement("select"), optgroup = document.createElement("optgroup"), option = document.createElement("option");
@@ -641,22 +698,22 @@ test("removeProp(String)", function() {
 		textNode = document.createTextNode("some text"),
 		obj = {};
 
-	strictEqual( jQuery( "#firstp" ).prop( "nonexisting", "foo" ).removeProp( "nonexisting" )[0].nonexisting, undefined, "removeprop works correctly on DOM element nodes" );
+	strictEqual( jQuery( "#firstp" ).prop( "nonexisting", "foo" ).removeProp( "nonexisting" )[0]["nonexisting"], undefined, "removeprop works correctly on DOM element nodes" );
 
 	jQuery.each( [document, obj], function( i, ele ) {
 		var $ele = jQuery( ele );
 		$ele.prop( "nonexisting", "foo" ).removeProp( "nonexisting" );
-		strictEqual( ele.nonexisting, undefined, "removeProp works correctly on non DOM element nodes (bug #7500)." );
+		strictEqual( ele["nonexisting"], undefined, "removeProp works correctly on non DOM element nodes (bug #7500)." );
 	});
 	jQuery.each( [commentNode, textNode, attributeNode], function( i, ele ) {
 		var $ele = jQuery( ele );
 		$ele.prop( "nonexisting", "foo" ).removeProp( "nonexisting" );
-		strictEqual( ele.nonexisting, undefined, "removeProp works correctly on non DOM element nodes (bug #7500)." );
+		strictEqual( ele["nonexisting"], undefined, "removeProp works correctly on non DOM element nodes (bug #7500)." );
 	});
 });
 
 test("val()", function() {
-	expect(26);
+	expect( 20 + ( jQuery.fn.serialize ? 6 : 0 ) );
 
 	document.getElementById("text1").value = "bla";
 	equal( jQuery("#text1").val(), "bla", "Check for modified value of input element" );
@@ -699,25 +756,27 @@ test("val()", function() {
 	jQuery("#select5").val(3);
 	equal( jQuery("#select5").val(), "3", "Check value on ambiguous select." );
 
-	var checks = jQuery("<input type='checkbox' name='test' value='1'/><input type='checkbox' name='test' value='2'/><input type='checkbox' name='test' value=''/><input type='checkbox' name='test'/>").appendTo("#form");
+	if ( jQuery.fn.serialize ) {
+		var checks = jQuery("<input type='checkbox' name='test' value='1'/><input type='checkbox' name='test' value='2'/><input type='checkbox' name='test' value=''/><input type='checkbox' name='test'/>").appendTo("#form");
 
-	deepEqual( checks.serialize(), "", "Get unchecked values." );
+		deepEqual( checks.serialize(), "", "Get unchecked values." );
 
-	equal( checks.eq(3).val(), "on", "Make sure a value of 'on' is provided if none is specified." );
+		equal( checks.eq(3).val(), "on", "Make sure a value of 'on' is provided if none is specified." );
 
-	checks.val([ "2" ]);
-	deepEqual( checks.serialize(), "test=2", "Get a single checked value." );
+		checks.val([ "2" ]);
+		deepEqual( checks.serialize(), "test=2", "Get a single checked value." );
 
-	checks.val([ "1", "" ]);
-	deepEqual( checks.serialize(), "test=1&test=", "Get multiple checked values." );
+		checks.val([ "1", "" ]);
+		deepEqual( checks.serialize(), "test=1&test=", "Get multiple checked values." );
 
-	checks.val([ "", "2" ]);
-	deepEqual( checks.serialize(), "test=2&test=", "Get multiple checked values." );
+		checks.val([ "", "2" ]);
+		deepEqual( checks.serialize(), "test=2&test=", "Get multiple checked values." );
 
-	checks.val([ "1", "on" ]);
-	deepEqual( checks.serialize(), "test=1&test=on", "Get multiple checked values." );
+		checks.val([ "1", "on" ]);
+		deepEqual( checks.serialize(), "test=1&test=on", "Get multiple checked values." );
 
-	checks.remove();
+		checks.remove();
+	}
 
 	var $button = jQuery("<button value='foobar'>text</button>").insertAfter("#button");
 	equal( $button.val(), "foobar", "Value retrieval on a button does not return innerHTML" );
@@ -782,7 +841,7 @@ var testVal = function(valueObj) {
 	j.val(valueObj( "asdf" ));
 	equal( j.val(), "asdf", "Check node,textnode,comment with val()" );
 	j.removeAttr("value");
-}
+};
 
 test("val(String/Number)", function() {
 	testVal(bareObj);
@@ -860,11 +919,11 @@ test("val(Function) with incoming value", function() {
 test("val(select) after form.reset() (Bug #2551)", function() {
 	expect(3);
 
-	jQuery("<form id='kk' name='kk'><select id='kkk'><option value='cf'>cf</option><option 	value='gf'>gf</option></select></form>").appendTo("#qunit-fixture");
+	jQuery("<form id='kk' name='kk'><select id='kkk'><option value='cf'>cf</option><option value='gf'>gf</option></select></form>").appendTo("#qunit-fixture");
 
 	jQuery("#kkk").val( "gf" );
 
-	document.kk.reset();
+	document["kk"].reset();
 
 	equal( jQuery("#kkk")[0].value, "cf", "Check value of select after form reset." );
 	equal( jQuery("#kkk").val(), "cf", "Check value of select after form reset." );
@@ -943,7 +1002,9 @@ test("addClass(Function) with incoming value", function() {
 
 	var pass = true;
 	for ( var i = 0; i < div.length; i++ ) {
-		if ( div.get(i).className.indexOf("test") == -1 ) pass = false;
+		if ( div.get(i).className.indexOf("test") == -1 ) {
+			pass = false;
+		}
 	}
 	ok( pass, "Add Class" );
 });
@@ -1017,6 +1078,16 @@ test("removeClass(Function) with incoming value", function() {
 	ok( !$divs.is(".test"), "Remove Class" );
 
 	QUnit.reset();
+});
+
+test("removeClass() removes duplicates", function() {
+	expect(1);
+
+	var $div = jQuery( jQuery.parseHTML("<div class='x x x'></div>") );
+
+	$div.removeClass("x");
+
+	ok( !$div.hasClass("x"), "Element with multiple same classes does not escape the wrath of removeClass()" );
 });
 
 var testToggleClass = function(valueObj) {
@@ -1151,7 +1222,8 @@ test("addClass, removeClass, hasClass", function() {
 	ok( jq.hasClass("hi"), "Check has1" );
 	ok( jq.hasClass("bar"), "Check has2" );
 
-	var jq = jQuery("<p class='class1\nclass2\tcla.ss3\n\rclass4'></p>");
+	jq = jQuery("<p class='class1\nclass2\tcla.ss3\n\rclass4'></p>");
+
 	ok( jq.hasClass("class1"), "Check hasClass with line feed" );
 	ok( jq.is(".class1"), "Check is with line feed" );
 	ok( jq.hasClass("class2"), "Check hasClass with tab" );
@@ -1161,13 +1233,13 @@ test("addClass, removeClass, hasClass", function() {
 	ok( jq.is(".class4"), "Check is with carriage return" );
 
 	jq.removeClass("class2");
-	ok( jq.hasClass("class2")==false, "Check the class has been properly removed" );
+	ok( jq.hasClass("class2")===false, "Check the class has been properly removed" );
 	jq.removeClass("cla");
 	ok( jq.hasClass("cla.ss3"), "Check the dotted class has not been removed" );
 	jq.removeClass("cla.ss3");
-	ok( jq.hasClass("cla.ss3")==false, "Check the dotted class has been removed" );
+	ok( jq.hasClass("cla.ss3")===false, "Check the dotted class has been removed" );
 	jq.removeClass("class4");
-	ok( jq.hasClass("class4")==false, "Check the class has been properly removed" );
+	ok( jq.hasClass("class4")===false, "Check the class has been properly removed" );
 });
 
 test("contents().hasClass() returns correct values", function() {

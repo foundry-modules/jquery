@@ -1,5 +1,3 @@
-(function( jQuery ) {
-
 jQuery.support = (function() {
 
 	var support,
@@ -9,30 +7,29 @@ jQuery.support = (function() {
 		opt,
 		input,
 		fragment,
-		tds,
-		events,
 		eventName,
 		i,
 		isSupported,
-		div = document.createElement( "div" ),
-		documentElement = document.documentElement;
+		clickFn,
+		div = document.createElement("div");
 
 	// Preliminary tests
-	div.setAttribute("className", "t");
-	div.innerHTML = "   <link/><table></table><a href='/a' style='top:1px;float:left;opacity:.55;'>a</a><input type='checkbox'/>";
+	div.setAttribute( "className", "t" );
+	div.innerHTML = "  <link/><table></table><a href='/a'>a</a><input type='checkbox'/>";
 
-	all = div.getElementsByTagName( "*" );
-	a = div.getElementsByTagName( "a" )[ 0 ];
+	all = div.getElementsByTagName("*");
+	a = div.getElementsByTagName("a")[ 0 ];
+	a.style.cssText = "top:1px;float:left;opacity:.5";
 
 	// Can't get basic test support
-	if ( !all || !all.length || !a ) {
+	if ( !all || !all.length ) {
 		return {};
 	}
 
 	// First batch of supports tests
-	select = document.createElement( "select" );
+	select = document.createElement("select");
 	opt = select.appendChild( document.createElement("option") );
-	input = div.getElementsByTagName( "input" )[ 0 ];
+	input = div.getElementsByTagName("input")[ 0 ];
 
 	support = {
 		// IE strips leading whitespace when .innerHTML is used
@@ -57,7 +54,7 @@ jQuery.support = (function() {
 		// Make sure that element opacity exists
 		// (IE uses filter instead)
 		// Use a regex to work around a WebKit issue. See #5145
-		opacity: /^0.55/.test( a.style.opacity ),
+		opacity: /^0.5/.test( a.style.opacity ),
 
 		// Verify style float existence
 		// (IE uses styleFloat instead of cssFloat)
@@ -82,6 +79,9 @@ jQuery.support = (function() {
 		// Where outerHTML is undefined, this still works
 		html5Clone: document.createElement("nav").cloneNode( true ).outerHTML !== "<:nav></:nav>",
 
+		// jQuery.support.boxModel DEPRECATED in 1.8 since we don't support Quirks Mode
+		boxModel: ( document.compatMode === "CSS1Compat" ),
+
 		// Will be defined later
 		submitBubbles: true,
 		changeBubbles: true,
@@ -91,11 +91,9 @@ jQuery.support = (function() {
 		inlineBlockNeedsLayout: false,
 		shrinkWrapBlocks: false,
 		reliableMarginRight: true,
-		pixelMargin: true
+		boxSizingReliable: true,
+		pixelPosition: false
 	};
-
-	// jQuery.boxModel DEPRECATED in 1.3, use jQuery.support.boxModel instead
-	jQuery.boxModel = support.boxModel = (document.compatMode === "CSS1Compat");
 
 	// Make sure checked status is properly cloned
 	input.checked = true;
@@ -115,22 +113,23 @@ jQuery.support = (function() {
 	}
 
 	if ( !div.addEventListener && div.attachEvent && div.fireEvent ) {
-		div.attachEvent( "onclick", function() {
+		div.attachEvent( "onclick", clickFn = function() {
 			// Cloning a node shouldn't copy over any
 			// bound event handlers (IE does this)
 			support.noCloneEvent = false;
 		});
-		div.cloneNode( true ).fireEvent( "onclick" );
+		div.cloneNode( true ).fireEvent("onclick");
+		div.detachEvent( "onclick", clickFn );
 	}
 
 	// Check if a radio maintains its value
 	// after being appended to the DOM
 	input = document.createElement("input");
 	input.value = "t";
-	input.setAttribute("type", "radio");
+	input.setAttribute( "type", "radio" );
 	support.radioValue = input.value === "t";
 
-	input.setAttribute("checked", "checked");
+	input.setAttribute( "checked", "checked" );
 
 	// #11217 - WebKit loses check when the name is after the checked attribute
 	input.setAttribute( "name", "t" );
@@ -157,9 +156,9 @@ jQuery.support = (function() {
 	// to go haywire. See: https://developer.mozilla.org/en/Security/CSP
 	if ( div.attachEvent ) {
 		for ( i in {
-			submit: 1,
-			change: 1,
-			focusin: 1
+			submit: true,
+			change: true,
+			focusin: true
 		}) {
 			eventName = "on" + i;
 			isSupported = ( eventName in div );
@@ -171,16 +170,10 @@ jQuery.support = (function() {
 		}
 	}
 
-	fragment.removeChild( div );
-
-	// Null elements to avoid leaks in IE
-	fragment = select = opt = div = input = null;
-
 	// Run tests that need a body at doc ready
 	jQuery(function() {
-		var container, outer, inner, table, td, offsetSupport,
-			marginDiv, conMarginTop, style, html, positionTopLeftWidthHeight,
-			paddingMarginBorderVisibility, paddingMarginBorder,
+		var container, div, tds, marginDiv,
+			divReset = "padding:0;margin:0;border:0;display:block;overflow:hidden;",
 			body = document.getElementsByTagName("body")[0];
 
 		if ( !body ) {
@@ -188,17 +181,8 @@ jQuery.support = (function() {
 			return;
 		}
 
-		conMarginTop = 1;
-		paddingMarginBorder = "padding:0;margin:0;border:";
-		positionTopLeftWidthHeight = "position:absolute;top:0;left:0;width:1px;height:1px;";
-		paddingMarginBorderVisibility = paddingMarginBorder + "0;visibility:hidden;";
-		style = "style='" + positionTopLeftWidthHeight + paddingMarginBorder + "5px solid #000;";
-		html = "<div " + style + "display:block;'><div style='" + paddingMarginBorder + "0;display:block;overflow:hidden;'></div></div>" +
-			"<table " + style + "' cellpadding='0' cellspacing='0'>" +
-			"<tr><td></td></tr></table>";
-
 		container = document.createElement("div");
-		container.style.cssText = paddingMarginBorderVisibility + "width:0;height:0;position:static;top:0;margin-top:" + conMarginTop + "px";
+		container.style.cssText = "visibility:hidden;border:0;width:0;height:0;position:static;top:0;margin-top:1px";
 		body.insertBefore( container, body.firstChild );
 
 		// Construct the test element
@@ -212,8 +196,9 @@ jQuery.support = (function() {
 		// display:none (it is still safe to use offsets if a parent element is
 		// hidden; don safety goggles and see bug #4512 for more information).
 		// (only IE 8 fails this test)
-		div.innerHTML = "<table><tr><td style='" + paddingMarginBorder + "0;display:none'></td><td>t</td></tr></table>";
-		tds = div.getElementsByTagName( "td" );
+		div.innerHTML = "<table><tr><td></td><td>t</td></tr></table>";
+		tds = div.getElementsByTagName("td");
+		tds[ 0 ].style.cssText = "padding:0;margin:0;border:0;display:none";
 		isSupported = ( tds[ 0 ].offsetHeight === 0 );
 
 		tds[ 0 ].style.display = "";
@@ -223,20 +208,30 @@ jQuery.support = (function() {
 		// (IE <= 8 fail this test)
 		support.reliableHiddenOffsets = isSupported && ( tds[ 0 ].offsetHeight === 0 );
 
-		// Check if div with explicit width and no margin-right incorrectly
-		// gets computed margin-right based on width of container. For more
-		// info see bug #3333
-		// Fails in WebKit before Feb 2011 nightlies
-		// WebKit Bug 13343 - getComputedStyle returns wrong value for margin-right
+		// Check box-sizing and margin behavior
+		div.innerHTML = "";
+		div.style.cssText = "box-sizing:border-box;-moz-box-sizing:border-box;-webkit-box-sizing:border-box;padding:1px;border:1px;display:block;width:4px;margin-top:1%;position:absolute;top:1%;";
+		support.boxSizing = ( div.offsetWidth === 4 );
+		support.doesNotIncludeMarginInBodyOffset = ( body.offsetTop !== 1 );
+
+		// NOTE: To any future maintainer, we've window.getComputedStyle
+		// because jsdom on node.js will break without it.
 		if ( window.getComputedStyle ) {
-			div.innerHTML = "";
-			marginDiv = document.createElement( "div" );
-			marginDiv.style.width = "0";
-			marginDiv.style.marginRight = "0";
-			div.style.width = "2px";
+			support.pixelPosition = ( window.getComputedStyle( div, null ) || {} ).top !== "1%";
+			support.boxSizingReliable = ( window.getComputedStyle( div, null ) || { width: "4px" } ).width === "4px";
+
+			// Check if div with explicit width and no margin-right incorrectly
+			// gets computed margin-right based on width of container. For more
+			// info see bug #3333
+			// Fails in WebKit before Feb 2011 nightlies
+			// WebKit Bug 13343 - getComputedStyle returns wrong value for margin-right
+			marginDiv = document.createElement("div");
+			marginDiv.style.cssText = div.style.cssText = divReset;
+			marginDiv.style.marginRight = marginDiv.style.width = "0";
+			div.style.width = "1px";
 			div.appendChild( marginDiv );
 			support.reliableMarginRight =
-				( parseInt( ( window.getComputedStyle( marginDiv, null ) || { marginRight: 0 } ).marginRight, 10 ) || 0 ) === 0;
+				!parseFloat( ( window.getComputedStyle( marginDiv, null ) || {} ).marginRight );
 		}
 
 		if ( typeof div.style.zoom !== "undefined" ) {
@@ -245,62 +240,28 @@ jQuery.support = (function() {
 			// them layout
 			// (IE < 8 does this)
 			div.innerHTML = "";
-			div.style.width = div.style.padding = "1px";
-			div.style.border = 0;
-			div.style.overflow = "hidden";
-			div.style.display = "inline";
-			div.style.zoom = 1;
+			div.style.cssText = divReset + "width:1px;padding:1px;display:inline;zoom:1";
 			support.inlineBlockNeedsLayout = ( div.offsetWidth === 3 );
 
 			// Check if elements with layout shrink-wrap their children
 			// (IE 6 does this)
 			div.style.display = "block";
 			div.style.overflow = "visible";
-			div.innerHTML = "<div style='width:5px;'></div>";
+			div.innerHTML = "<div></div>";
+			div.firstChild.style.width = "5px";
 			support.shrinkWrapBlocks = ( div.offsetWidth !== 3 );
-		}
 
-		div.style.cssText = positionTopLeftWidthHeight + paddingMarginBorderVisibility;
-		div.innerHTML = html;
-
-		outer = div.firstChild;
-		inner = outer.firstChild;
-		td = outer.nextSibling.firstChild.firstChild;
-
-		offsetSupport = {
-			doesNotAddBorder: ( inner.offsetTop !== 5 ),
-			doesAddBorderForTableAndCells: ( td.offsetTop === 5 )
-		};
-
-		inner.style.position = "fixed";
-		inner.style.top = "20px";
-
-		// safari subtracts parent border width here which is 5px
-		offsetSupport.fixedPosition = ( inner.offsetTop === 20 || inner.offsetTop === 15 );
-		inner.style.position = inner.style.top = "";
-
-		outer.style.overflow = "hidden";
-		outer.style.position = "relative";
-
-		offsetSupport.subtractsBorderForOverflowNotVisible = ( inner.offsetTop === -5 );
-		offsetSupport.doesNotIncludeMarginInBodyOffset = ( body.offsetTop !== conMarginTop );
-
-		if ( window.getComputedStyle ) {
-			div.style.marginTop = "1%";
-			support.pixelMargin = ( window.getComputedStyle( div, null ) || { marginTop: 0 } ).marginTop !== "1%";
-		}
-
-		if ( typeof container.style.zoom !== "undefined" ) {
 			container.style.zoom = 1;
 		}
 
+		// Null elements to avoid leaks in IE
 		body.removeChild( container );
-		marginDiv = div = container = null;
-
-		jQuery.extend( support, offsetSupport );
+		container = div = tds = marginDiv = null;
 	});
+
+	// Null elements to avoid leaks in IE
+	fragment.removeChild( div );
+	all = a = select = opt = input = fragment = div = null;
 
 	return support;
 })();
-
-})( jQuery );

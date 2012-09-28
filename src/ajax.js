@@ -1,21 +1,18 @@
-(function( jQuery ) {
+var
+	// Document location
+	ajaxLocParts,
+	ajaxLocation,
 
-var r20 = /%20/g,
-	rbracket = /\[\]$/,
-	rCRLF = /\r?\n/g,
 	rhash = /#.*$/,
 	rheaders = /^(.*?):[ \t]*([^\r\n]*)\r?$/mg, // IE leaves an \r character at EOL
-	rinput = /^(?:color|date|datetime|datetime-local|email|hidden|month|number|password|range|search|tel|text|time|url|week)$/i,
 	// #7653, #8125, #8152: local protocol detection
 	rlocalProtocol = /^(?:about|app|app\-storage|.+\-extension|file|res|widget):$/,
 	rnoContent = /^(?:GET|HEAD)$/,
 	rprotocol = /^\/\//,
 	rquery = /\?/,
 	rscript = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-	rselectTextarea = /^(?:select|textarea)/i,
-	rspacesAjax = /\s+/,
 	rts = /([?&])_=[^&]*/,
-	rurl = /^([\w\+\.\-]+:)(?:\/\/([^\/?#:]*)(?::(\d+))?)?/,
+	rurl = /^([\w\+\.\-]+:)(?:\/\/([^\/?#:]*)(?::(\d+)|)|)/,
 
 	// Keep a copy of the old load method
 	_load = jQuery.fn.load,
@@ -37,12 +34,6 @@ var r20 = /%20/g,
 	 * 3) selection will start with transport dataType and THEN go to "*" if needed
 	 */
 	transports = {},
-
-	// Document location
-	ajaxLocation,
-
-	// Document location segments
-	ajaxLocParts,
 
 	// Avoid comment-prolog char sequence (#10098); must appease lint and evade compression
 	allTypes = ["*/"] + ["*"];
@@ -73,14 +64,12 @@ function addToPrefiltersOrTransports( structure ) {
 			dataTypeExpression = "*";
 		}
 
-		if ( jQuery.isFunction( func ) ) {
-			var dataTypes = dataTypeExpression.toLowerCase().split( rspacesAjax ),
-				i = 0,
-				length = dataTypes.length,
-				dataType,
-				list,
-				placeBefore;
+		var dataType, list, placeBefore,
+			dataTypes = dataTypeExpression.toLowerCase().split( core_rspace ),
+			i = 0,
+			length = dataTypes.length;
 
+		if ( jQuery.isFunction( func ) ) {
 			// For each dataType in the dataTypeExpression
 			for ( ; i < length; i++ ) {
 				dataType = dataTypes[ i ];
@@ -107,11 +96,11 @@ function inspectPrefiltersOrTransports( structure, options, originalOptions, jqX
 
 	inspected[ dataType ] = true;
 
-	var list = structure[ dataType ],
+	var selection,
+		list = structure[ dataType ],
 		i = 0,
 		length = list ? list.length : 0,
-		executeOnly = ( structure === prefilters ),
-		selection;
+		executeOnly = ( structure === prefilters );
 
 	for ( ; i < length && ( executeOnly || !selection ); i++ ) {
 		selection = list[ i ]( options, originalOptions, jqXHR );
@@ -154,109 +143,75 @@ function ajaxExtend( target, src ) {
 	}
 }
 
-jQuery.fn.extend({
-	load: function( url, params, callback ) {
-		if ( typeof url !== "string" && _load ) {
-			return _load.apply( this, arguments );
-
-		// Don't do a request if no elements are being requested
-		} else if ( !this.length ) {
-			return this;
-		}
-
-		var off = url.indexOf( " " );
-		if ( off >= 0 ) {
-			var selector = url.slice( off, url.length );
-			url = url.slice( 0, off );
-		}
-
-		// Default to a GET request
-		var type = "GET";
-
-		// If the second parameter was provided
-		if ( params ) {
-			// If it's a function
-			if ( jQuery.isFunction( params ) ) {
-				// We assume that it's the callback
-				callback = params;
-				params = undefined;
-
-			// Otherwise, build a param string
-			} else if ( typeof params === "object" ) {
-				params = jQuery.param( params, jQuery.ajaxSettings.traditional );
-				type = "POST";
-			}
-		}
-
-		var self = this;
-
-		// Request the remote document
-		jQuery.ajax({
-			url: url,
-			type: type,
-			dataType: "html",
-			data: params,
-			// Complete callback (responseText is used internally)
-			complete: function( jqXHR, status, responseText ) {
-				// Store the response as specified by the jqXHR object
-				responseText = jqXHR.responseText;
-				// If successful, inject the HTML into all the matched elements
-				if ( jqXHR.isResolved() ) {
-					// #4825: Get the actual response in case
-					// a dataFilter is present in ajaxSettings
-					jqXHR.done(function( r ) {
-						responseText = r;
-					});
-					// See if a selector was specified
-					self.html( selector ?
-						// Create a dummy div to hold the results
-						jQuery("<div>")
-							// inject the contents of the document in, removing the scripts
-							// to avoid any 'Permission Denied' errors in IE
-							.append(responseText.replace(rscript, ""))
-
-							// Locate the specified elements
-							.find(selector) :
-
-						// If not, just inject the full result
-						responseText );
-				}
-
-				if ( callback ) {
-					self.each( callback, [ responseText, status, jqXHR ] );
-				}
-			}
-		});
-
-		return this;
-	},
-
-	serialize: function() {
-		return jQuery.param( this.serializeArray() );
-	},
-
-	serializeArray: function() {
-		return this.map(function(){
-			return this.elements ? jQuery.makeArray( this.elements ) : this;
-		})
-		.filter(function(){
-			return this.name && !this.disabled &&
-				( this.checked || rselectTextarea.test( this.nodeName ) ||
-					rinput.test( this.type ) );
-		})
-		.map(function( i, elem ){
-			var val = jQuery( this ).val();
-
-			return val == null ?
-				null :
-				jQuery.isArray( val ) ?
-					jQuery.map( val, function( val, i ){
-						return { name: elem.name, value: val.replace( rCRLF, "\r\n" ) };
-					}) :
-					{ name: elem.name, value: val.replace( rCRLF, "\r\n" ) };
-		}).get();
+jQuery.fn.load = function( url, params, callback ) {
+	if ( typeof url !== "string" && _load ) {
+		return _load.apply( this, arguments );
 	}
-});
+
+	// Don't do a request if no elements are being requested
+	if ( !this.length ) {
+		return this;
+	}
+
+	var selector, type, response,
+		self = this,
+		off = url.indexOf(" ");
+
+	if ( off >= 0 ) {
+		selector = url.slice( off, url.length );
+		url = url.slice( 0, off );
+	}
+
+	// If it's a function
+	if ( jQuery.isFunction( params ) ) {
+
+		// We assume that it's the callback
+		callback = params;
+		params = undefined;
+
+	// Otherwise, build a param string
+	} else if ( params && typeof params === "object" ) {
+		type = "POST";
+	}
+
+	// Request the remote document
+	jQuery.ajax({
+		url: url,
+
+		// if "type" variable is undefined, then "GET" method will be used
+		type: type,
+		dataType: "html",
+		data: params,
+		complete: function( jqXHR, status ) {
+			if ( callback ) {
+				self.each( callback, response || [ jqXHR.responseText, status, jqXHR ] );
+			}
+		}
+	}).done(function( responseText ) {
+
+		// Save response for use in complete callback
+		response = arguments;
+
+		// See if a selector was specified
+		self.html( selector ?
+
+			// Create a dummy div to hold the results
+			jQuery("<div>")
+
+				// inject the contents of the document in, removing the scripts
+				// to avoid any 'Permission Denied' errors in IE
+				.append( responseText.replace( rscript, "" ) )
+
+				// Locate the specified elements
+				.find( selector ) :
+
+			// If not, just inject the full result
+			responseText );
+
+	});
+
+	return this;
+};
 
 // Attach a bunch of functions for handling common AJAX events
 jQuery.each( "ajaxStart ajaxStop ajaxComplete ajaxError ajaxSuccess ajaxSend".split( " " ), function( i, o ){
@@ -325,6 +280,7 @@ jQuery.extend({
 		username: null,
 		password: null,
 		cache: null,
+		throws: false,
 		traditional: false,
 		headers: {},
 		*/
@@ -391,7 +347,22 @@ jQuery.extend({
 		// Force options to be an object
 		options = options || {};
 
-		var // Create the final options object
+		var // ifModified key
+			ifModifiedKey,
+			// Response headers
+			responseHeadersString,
+			responseHeaders,
+			// transport
+			transport,
+			// timeout handle
+			timeoutTimer,
+			// Cross-domain detection vars
+			parts,
+			// To know if global events are to be dispatched
+			fireGlobals,
+			// Loop variable
+			i,
+			// Create the final options object
 			s = jQuery.ajaxSetup( {}, options ),
 			// Callbacks context
 			callbackContext = s.context || s,
@@ -406,26 +377,13 @@ jQuery.extend({
 			completeDeferred = jQuery.Callbacks( "once memory" ),
 			// Status-dependent callbacks
 			statusCode = s.statusCode || {},
-			// ifModified key
-			ifModifiedKey,
 			// Headers (they are sent all at once)
 			requestHeaders = {},
 			requestHeadersNames = {},
-			// Response headers
-			responseHeadersString,
-			responseHeaders,
-			// transport
-			transport,
-			// timeout handle
-			timeoutTimer,
-			// Cross-domain detection vars
-			parts,
 			// The jqXHR state
 			state = 0,
-			// To know if global events are to be dispatched
-			fireGlobals,
-			// Loop variable
-			i,
+			// Default abort message
+			strAbort = "canceled",
 			// Fake xhr
 			jqXHR = {
 
@@ -471,7 +429,7 @@ jQuery.extend({
 
 				// Cancel the request
 				abort: function( statusText ) {
-					statusText = statusText || "abort";
+					statusText = statusText || strAbort;
 					if ( transport ) {
 						transport.abort( statusText );
 					}
@@ -484,6 +442,8 @@ jQuery.extend({
 		// It is defined here because jslint complains if it is declared
 		// at the end of the function (which would be more logical and readable)
 		function done( status, nativeStatusText, responses, headers ) {
+			var isSuccess, success, error, response, modified,
+				statusText = nativeStatusText;
 
 			// Called once
 			if ( state === 2 ) {
@@ -508,13 +468,10 @@ jQuery.extend({
 			// Set readyState
 			jqXHR.readyState = status > 0 ? 4 : 0;
 
-			var isSuccess,
-				success,
-				error,
-				statusText = nativeStatusText,
-				response = responses ? ajaxHandleResponses( s, jqXHR, responses ) : undefined,
-				lastModified,
-				etag;
+			// Get response data
+			if ( responses ) {
+				response = ajaxHandleResponses( s, jqXHR, responses );
+			}
 
 			// If successful, handle type chaining
 			if ( status >= 200 && status < 300 || status === 304 ) {
@@ -522,11 +479,13 @@ jQuery.extend({
 				// Set the If-Modified-Since and/or If-None-Match header, if in ifModified mode.
 				if ( s.ifModified ) {
 
-					if ( ( lastModified = jqXHR.getResponseHeader( "Last-Modified" ) ) ) {
-						jQuery.lastModified[ ifModifiedKey ] = lastModified;
+					modified = jqXHR.getResponseHeader("Last-Modified");
+					if ( modified ) {
+						jQuery.lastModified[ ifModifiedKey ] = modified;
 					}
-					if ( ( etag = jqXHR.getResponseHeader( "Etag" ) ) ) {
-						jQuery.etag[ ifModifiedKey ] = etag;
+					modified = jqXHR.getResponseHeader("Etag");
+					if ( modified ) {
+						jQuery.etag[ ifModifiedKey ] = modified;
 					}
 				}
 
@@ -539,15 +498,11 @@ jQuery.extend({
 				// If we have data
 				} else {
 
-					try {
-						success = ajaxConvert( s, response );
-						statusText = "success";
-						isSuccess = true;
-					} catch(e) {
-						// We have a parsererror
-						statusText = "parsererror";
-						error = e;
-					}
+					isSuccess = ajaxConvert( s, response );
+					statusText = isSuccess.state;
+					success = isSuccess.data;
+					error = isSuccess.error;
+					isSuccess = !error;
 				}
 			} else {
 				// We extract error from statusText
@@ -563,7 +518,7 @@ jQuery.extend({
 
 			// Set data for the fake xhr object
 			jqXHR.status = status;
-			jqXHR.statusText = "" + ( nativeStatusText || statusText );
+			jqXHR.statusText = ( nativeStatusText || statusText ) + "";
 
 			// Success/Error
 			if ( isSuccess ) {
@@ -609,7 +564,7 @@ jQuery.extend({
 					}
 				} else {
 					tmp = map[ jqXHR.status ];
-					jqXHR.then( tmp, tmp );
+					jqXHR.always( tmp );
 				}
 			}
 			return this;
@@ -621,16 +576,13 @@ jQuery.extend({
 		s.url = ( ( url || s.url ) + "" ).replace( rhash, "" ).replace( rprotocol, ajaxLocParts[ 1 ] + "//" );
 
 		// Extract dataTypes list
-		s.dataTypes = jQuery.trim( s.dataType || "*" ).toLowerCase().split( rspacesAjax );
+		s.dataTypes = jQuery.trim( s.dataType || "*" ).toLowerCase().split( core_rspace );
 
-		// Determine if a cross-domain request is in order
+		// A cross-domain request is in order when we have a protocol:host:port mismatch
 		if ( s.crossDomain == null ) {
-			parts = rurl.exec( s.url.toLowerCase() );
-			s.crossDomain = !!( parts &&
-				( parts[ 1 ] != ajaxLocParts[ 1 ] || parts[ 2 ] != ajaxLocParts[ 2 ] ||
-					( parts[ 3 ] || ( parts[ 1 ] === "http:" ? 80 : 443 ) ) !=
-						( ajaxLocParts[ 3 ] || ( ajaxLocParts[ 1 ] === "http:" ? 80 : 443 ) ) )
-			);
+			parts = rurl.exec( s.url.toLowerCase() ) || false;
+			s.crossDomain = parts && ( parts.join(":") + ( parts[ 3 ] ? "" : parts[ 1 ] === "http:" ? 80 : 443 ) ) !==
+				( ajaxLocParts.join(":") + ( ajaxLocParts[ 3 ] ? "" : ajaxLocParts[ 1 ] === "http:" ? 80 : 443 ) );
 		}
 
 		// Convert data if not already a string
@@ -643,7 +595,7 @@ jQuery.extend({
 
 		// If request was aborted inside a prefilter, stop there
 		if ( state === 2 ) {
-			return false;
+			return jqXHR;
 		}
 
 		// We can fire global events as of now if asked to
@@ -716,11 +668,13 @@ jQuery.extend({
 
 		// Allow custom headers/mimetypes and early abort
 		if ( s.beforeSend && ( s.beforeSend.call( callbackContext, jqXHR, s ) === false || state === 2 ) ) {
-				// Abort if not done already
-				jqXHR.abort();
-				return false;
+				// Abort if not done already and return
+				return jqXHR.abort();
 
 		}
+
+		// aborting is no longer a cancellation
+		strAbort = "abort";
 
 		// Install callbacks on deferreds
 		for ( i in { success: 1, error: 1, complete: 1 } ) {
@@ -763,77 +717,6 @@ jQuery.extend({
 		return jqXHR;
 	},
 
-	// Serialize an array of form elements or a set of
-	// key/values into a query string
-	param: function( a, traditional ) {
-		var s = [],
-			add = function( key, value ) {
-				// If value is a function, invoke it and return its value
-				value = jQuery.isFunction( value ) ? value() : value;
-				s[ s.length ] = encodeURIComponent( key ) + "=" + encodeURIComponent( value );
-			};
-
-		// Set traditional to true for jQuery <= 1.3.2 behavior.
-		if ( traditional === undefined ) {
-			traditional = jQuery.ajaxSettings.traditional;
-		}
-
-		// If an array was passed in, assume that it is an array of form elements.
-		if ( jQuery.isArray( a ) || ( a.jquery && !jQuery.isPlainObject( a ) ) ) {
-			// Serialize the form elements
-			jQuery.each( a, function() {
-				add( this.name, this.value );
-			});
-
-		} else {
-			// If traditional, encode the "old" way (the way 1.3.2 or older
-			// did it), otherwise encode params recursively.
-			for ( var prefix in a ) {
-				buildParams( prefix, a[ prefix ], traditional, add );
-			}
-		}
-
-		// Return the resulting serialization
-		return s.join( "&" ).replace( r20, "+" );
-	}
-});
-
-function buildParams( prefix, obj, traditional, add ) {
-	if ( jQuery.isArray( obj ) ) {
-		// Serialize array item.
-		jQuery.each( obj, function( i, v ) {
-			if ( traditional || rbracket.test( prefix ) ) {
-				// Treat each array item as a scalar.
-				add( prefix, v );
-
-			} else {
-				// If array item is non-scalar (array or object), encode its
-				// numeric index to resolve deserialization ambiguity issues.
-				// Note that rack (as of 1.0.0) can't currently deserialize
-				// nested arrays properly, and attempting to do so may cause
-				// a server error. Possible fixes are to modify rack's
-				// deserialization algorithm or to provide an option or flag
-				// to force array serialization to be shallow.
-				buildParams( prefix + "[" + ( typeof v === "object" ? i : "" ) + "]", v, traditional, add );
-			}
-		});
-
-	} else if ( !traditional && jQuery.type( obj ) === "object" ) {
-		// Serialize object item.
-		for ( var name in obj ) {
-			buildParams( prefix + "[" + name + "]", obj[ name ], traditional, add );
-		}
-
-	} else {
-		// Serialize scalar item.
-		add( prefix, obj );
-	}
-}
-
-// This is still on the jQuery object... for now
-// Want to move this to jQuery.ajax some day
-jQuery.extend({
-
 	// Counter for holding the number of active queries
 	active: 0,
 
@@ -850,13 +733,10 @@ jQuery.extend({
  */
 function ajaxHandleResponses( s, jqXHR, responses ) {
 
-	var contents = s.contents,
+	var ct, type, finalDataType, firstDataType,
+		contents = s.contents,
 		dataTypes = s.dataTypes,
-		responseFields = s.responseFields,
-		ct,
-		type,
-		finalDataType,
-		firstDataType;
+		responseFields = s.responseFields;
 
 	// Fill responseXXX fields
 	for ( type in responseFields ) {
@@ -915,86 +795,85 @@ function ajaxHandleResponses( s, jqXHR, responses ) {
 // Chain conversions given the request and the original response
 function ajaxConvert( s, response ) {
 
+	var conv, conv2, current, tmp,
+		// Work with a copy of dataTypes in case we need to modify it for conversion
+		dataTypes = s.dataTypes.slice(),
+		prev = dataTypes[ 0 ],
+		converters = {},
+		i = 0;
+
 	// Apply the dataFilter if provided
 	if ( s.dataFilter ) {
 		response = s.dataFilter( response, s.dataType );
 	}
 
-	var dataTypes = s.dataTypes,
-		converters = {},
-		i,
-		key,
-		length = dataTypes.length,
-		tmp,
-		// Current and previous dataTypes
-		current = dataTypes[ 0 ],
-		prev,
-		// Conversion expression
-		conversion,
-		// Conversion function
-		conv,
-		// Conversion functions (transitive conversion)
-		conv1,
-		conv2;
-
-	// For each dataType in the chain
-	for ( i = 1; i < length; i++ ) {
-
-		// Create converters map
-		// with lowercased keys
-		if ( i === 1 ) {
-			for ( key in s.converters ) {
-				if ( typeof key === "string" ) {
-					converters[ key.toLowerCase() ] = s.converters[ key ];
-				}
-			}
+	// Create converters map with lowercased keys
+	if ( dataTypes[ 1 ] ) {
+		for ( conv in s.converters ) {
+			converters[ conv.toLowerCase() ] = s.converters[ conv ];
 		}
+	}
 
-		// Get the dataTypes
-		prev = current;
-		current = dataTypes[ i ];
+	// Convert to each sequential dataType, tolerating list modification
+	for ( ; (current = dataTypes[++i]); ) {
 
-		// If current is auto dataType, update it to prev
-		if ( current === "*" ) {
-			current = prev;
-		// If no auto and dataTypes are actually different
-		} else if ( prev !== "*" && prev !== current ) {
+		// There's only work to do if current dataType is non-auto
+		if ( current !== "*" ) {
 
-			// Get the converter
-			conversion = prev + " " + current;
-			conv = converters[ conversion ] || converters[ "* " + current ];
+			// Convert response if prev dataType is non-auto and differs from current
+			if ( prev !== "*" && prev !== current ) {
 
-			// If there is no direct converter, search transitively
-			if ( !conv ) {
-				conv2 = undefined;
-				for ( conv1 in converters ) {
-					tmp = conv1.split( " " );
-					if ( tmp[ 0 ] === prev || tmp[ 0 ] === "*" ) {
-						conv2 = converters[ tmp[1] + " " + current ];
-						if ( conv2 ) {
-							conv1 = converters[ conv1 ];
-							if ( conv1 === true ) {
-								conv = conv2;
-							} else if ( conv2 === true ) {
-								conv = conv1;
+				// Seek a direct converter
+				conv = converters[ prev + " " + current ] || converters[ "* " + current ];
+
+				// If none found, seek a pair
+				if ( !conv ) {
+					for ( conv2 in converters ) {
+
+						// If conv2 outputs current
+						tmp = conv2.split(" ");
+						if ( tmp[ 1 ] === current ) {
+
+							// If prev can be converted to accepted input
+							conv = converters[ prev + " " + tmp[ 0 ] ] ||
+								converters[ "* " + tmp[ 0 ] ];
+							if ( conv ) {
+								// Condense equivalence converters
+								if ( conv === true ) {
+									conv = converters[ conv2 ];
+
+								// Otherwise, insert the intermediate dataType
+								} else if ( converters[ conv2 ] !== true ) {
+									current = tmp[ 0 ];
+									dataTypes.splice( i--, 0, current );
+								}
+
+								break;
 							}
-							break;
+						}
+					}
+				}
+
+				// Apply converter (if not an equivalence)
+				if ( conv !== true ) {
+
+					// Unless errors are allowed to bubble, catch and return them
+					if ( conv && s["throws"] ) {
+						response = conv( response );
+					} else {
+						try {
+							response = conv( response );
+						} catch ( e ) {
+							return { state: "parsererror", error: conv ? e : "No conversion from " + prev + " to " + current };
 						}
 					}
 				}
 			}
-			// If we found no converter, dispatch an error
-			if ( !( conv || conv2 ) ) {
-				jQuery.error( "No conversion from " + conversion.replace(" "," to ") );
-			}
-			// If found converter is not an equivalence
-			if ( conv !== true ) {
-				// Convert with 1 or 2 converters accordingly
-				response = conv ? conv( response ) : conv2( conv1(response) );
-			}
+
+			// Update prev for next iteration
+			prev = current;
 		}
 	}
-	return response;
-}
 
-})( jQuery );
+	return { state: "success", data: response };
+}

@@ -1,12 +1,7 @@
-(function( jQuery ) {
-
 var runtil = /Until$/,
-	rparentsprev = /^(?:parents|prevUntil|prevAll)/,
-	// Note: This RegExp should be improved, or likely pulled from Sizzle
-	rmultiselector = /,/,
+	rparentsprev = /^(?:parents|prev(?:Until|All))/,
 	isSimple = /^.[^:#\[\.,]*$/,
-	slice = Array.prototype.slice,
-	POS = jQuery.expr.match.globalPOS,
+	rneedsContext = jQuery.expr.match.needsContext,
 	// methods guaranteed to produce a unique set when starting from a unique set
 	guaranteedUnique = {
 		children: true,
@@ -17,8 +12,8 @@ var runtil = /Until$/,
 
 jQuery.fn.extend({
 	find: function( selector ) {
-		var self = this,
-			i, l;
+		var i, l, length, n, r, ret,
+			self = this;
 
 		if ( typeof selector !== "string" ) {
 			return jQuery( selector ).filter(function() {
@@ -30,8 +25,7 @@ jQuery.fn.extend({
 			});
 		}
 
-		var ret = this.pushStack( "", "find", selector ),
-			length, n, r;
+		ret = this.pushStack( "", "find", selector );
 
 		for ( i = 0, l = this.length; i < l; i++ ) {
 			length = ret.length;
@@ -54,9 +48,12 @@ jQuery.fn.extend({
 	},
 
 	has: function( target ) {
-		var targets = jQuery( target );
+		var i,
+			targets = jQuery( target, this ),
+			len = targets.length;
+
 		return this.filter(function() {
-			for ( var i = 0, l = targets.length; i < l; i++ ) {
+			for ( i = 0; i < len; i++ ) {
 				if ( jQuery.contains( this, targets[i] ) ) {
 					return true;
 				}
@@ -75,55 +72,32 @@ jQuery.fn.extend({
 	is: function( selector ) {
 		return !!selector && (
 			typeof selector === "string" ?
-				// If this is a positional selector, check membership in the returned set
+				// If this is a positional/relative selector, check membership in the returned set
 				// so $("p:first").is("p:last") won't return true for a doc with two "p".
-				POS.test( selector ) ?
+				rneedsContext.test( selector ) ?
 					jQuery( selector, this.context ).index( this[0] ) >= 0 :
 					jQuery.filter( selector, this ).length > 0 :
 				this.filter( selector ).length > 0 );
 	},
 
 	closest: function( selectors, context ) {
-		var ret = [], i, l, cur = this[0];
-
-		// Array (deprecated as of jQuery 1.7)
-		if ( jQuery.isArray( selectors ) ) {
-			var level = 1;
-
-			while ( cur && cur.ownerDocument && cur !== context ) {
-				for ( i = 0; i < selectors.length; i++ ) {
-
-					if ( jQuery( cur ).is( selectors[ i ] ) ) {
-						ret.push({ selector: selectors[ i ], elem: cur, level: level });
-					}
-				}
-
-				cur = cur.parentNode;
-				level++;
-			}
-
-			return ret;
-		}
-
-		// String
-		var pos = POS.test( selectors ) || typeof selectors !== "string" ?
+		var cur,
+			i = 0,
+			l = this.length,
+			ret = [],
+			pos = rneedsContext.test( selectors ) || typeof selectors !== "string" ?
 				jQuery( selectors, context || this.context ) :
 				0;
 
-		for ( i = 0, l = this.length; i < l; i++ ) {
+		for ( ; i < l; i++ ) {
 			cur = this[i];
 
-			while ( cur ) {
+			while ( cur && cur.ownerDocument && cur !== context && cur.nodeType !== 11 ) {
 				if ( pos ? pos.index(cur) > -1 : jQuery.find.matchesSelector(cur, selectors) ) {
 					ret.push( cur );
 					break;
-
-				} else {
-					cur = cur.parentNode;
-					if ( !cur || !cur.ownerDocument || cur === context || cur.nodeType === 11 ) {
-						break;
-					}
 				}
+				cur = cur.parentNode;
 			}
 		}
 
@@ -163,15 +137,27 @@ jQuery.fn.extend({
 			jQuery.unique( all ) );
 	},
 
-	andSelf: function() {
-		return this.add( this.prevObject );
+	addBack: function( selector ) {
+		return this.add( selector == null ?
+			this.prevObject : this.prevObject.filter(selector)
+		);
 	}
 });
+
+jQuery.fn.andSelf = jQuery.fn.addBack;
 
 // A painfully simple check to see if an element is disconnected
 // from a document (should be improved, where feasible).
 function isDisconnected( node ) {
 	return !node || !node.parentNode || node.parentNode.nodeType === 11;
+}
+
+function sibling( cur, dir ) {
+	do {
+		cur = cur[ dir ];
+	} while ( cur && cur.nodeType !== 1 );
+
+	return cur;
 }
 
 jQuery.each({
@@ -186,10 +172,10 @@ jQuery.each({
 		return jQuery.dir( elem, "parentNode", until );
 	},
 	next: function( elem ) {
-		return jQuery.nth( elem, 2, "nextSibling" );
+		return sibling( elem, "nextSibling" );
 	},
 	prev: function( elem ) {
-		return jQuery.nth( elem, 2, "previousSibling" );
+		return sibling( elem, "previousSibling" );
 	},
 	nextAll: function( elem ) {
 		return jQuery.dir( elem, "nextSibling" );
@@ -212,7 +198,7 @@ jQuery.each({
 	contents: function( elem ) {
 		return jQuery.nodeName( elem, "iframe" ) ?
 			elem.contentDocument || elem.contentWindow.document :
-			jQuery.makeArray( elem.childNodes );
+			jQuery.merge( [], elem.childNodes );
 	}
 }, function( name, fn ) {
 	jQuery.fn[ name ] = function( until, selector ) {
@@ -228,11 +214,11 @@ jQuery.each({
 
 		ret = this.length > 1 && !guaranteedUnique[ name ] ? jQuery.unique( ret ) : ret;
 
-		if ( (this.length > 1 || rmultiselector.test( selector )) && rparentsprev.test( name ) ) {
+		if ( this.length > 1 && rparentsprev.test( name ) ) {
 			ret = ret.reverse();
 		}
 
-		return this.pushStack( ret, name, slice.call( arguments ).join(",") );
+		return this.pushStack( ret, name, core_slice.call( arguments ).join(",") );
 	};
 });
 
@@ -258,19 +244,6 @@ jQuery.extend({
 			cur = cur[dir];
 		}
 		return matched;
-	},
-
-	nth: function( cur, result, dir, elem ) {
-		result = result || 1;
-		var num = 0;
-
-		for ( ; cur; cur = cur[dir] ) {
-			if ( cur.nodeType === 1 && ++num === result ) {
-				break;
-			}
-		}
-
-		return cur;
 	},
 
 	sibling: function( n, elem ) {
@@ -320,5 +293,3 @@ function winnow( elements, qualifier, keep ) {
 		return ( jQuery.inArray( elem, qualifier ) >= 0 ) === keep;
 	});
 }
-
-})( jQuery );

@@ -1,14 +1,11 @@
-(function( jQuery ) {
-
-var rclass = /[\n\t\r]/g,
-	rspace = /\s+/,
+var nodeHook, boolHook, fixSpecified,
+	rclass = /[\t\r\n]/g,
 	rreturn = /\r/g,
 	rtype = /^(?:button|input)$/i,
 	rfocusable = /^(?:button|input|object|select|textarea)$/i,
-	rclickable = /^a(?:rea)?$/i,
+	rclickable = /^a(?:rea|)$/i,
 	rboolean = /^(?:autofocus|autoplay|async|checked|controls|defer|disabled|hidden|loop|multiple|open|readonly|required|scoped|selected)$/i,
-	getSetAttribute = jQuery.support.getSetAttribute,
-	nodeHook, boolHook, fixSpecified;
+	getSetAttribute = jQuery.support.getSetAttribute;
 
 jQuery.fn.extend({
 	attr: function( name, value ) {
@@ -47,7 +44,7 @@ jQuery.fn.extend({
 		}
 
 		if ( value && typeof value === "string" ) {
-			classNames = value.split( rspace );
+			classNames = value.split( core_rspace );
 
 			for ( i = 0, l = this.length; i < l; i++ ) {
 				elem = this[ i ];
@@ -60,7 +57,7 @@ jQuery.fn.extend({
 						setClass = " " + elem.className + " ";
 
 						for ( c = 0, cl = classNames.length; c < cl; c++ ) {
-							if ( !~setClass.indexOf( " " + classNames[ c ] + " " ) ) {
+							if ( setClass.indexOf( " " + classNames[ c ] + " " ) < 0 ) {
 								setClass += classNames[ c ] + " ";
 							}
 						}
@@ -74,31 +71,30 @@ jQuery.fn.extend({
 	},
 
 	removeClass: function( value ) {
-		var classNames, i, l, elem, className, c, cl;
+		var removes, className, elem, c, cl, i, l;
 
 		if ( jQuery.isFunction( value ) ) {
 			return this.each(function( j ) {
 				jQuery( this ).removeClass( value.call(this, j, this.className) );
 			});
 		}
-
 		if ( (value && typeof value === "string") || value === undefined ) {
-			classNames = ( value || "" ).split( rspace );
+			removes = ( value || "" ).split( core_rspace );
 
 			for ( i = 0, l = this.length; i < l; i++ ) {
 				elem = this[ i ];
-
 				if ( elem.nodeType === 1 && elem.className ) {
-					if ( value ) {
-						className = (" " + elem.className + " ").replace( rclass, " " );
-						for ( c = 0, cl = classNames.length; c < cl; c++ ) {
-							className = className.replace(" " + classNames[ c ] + " ", " ");
-						}
-						elem.className = jQuery.trim( className );
 
-					} else {
-						elem.className = "";
+					className = (" " + elem.className + " ").replace( rclass, " " );
+
+					// loop over each item in the removal list
+					for ( c = 0, cl = removes.length; c < cl; c++ ) {
+						// Remove until there is nothing to remove,
+						while ( className.indexOf(" " + removes[ c ] + " ") >= 0 ) {
+							className = className.replace( " " + removes[ c ] + " " , " " );
+						}
 					}
+					elem.className = value ? jQuery.trim( className ) : "";
 				}
 			}
 		}
@@ -123,10 +119,10 @@ jQuery.fn.extend({
 					i = 0,
 					self = jQuery( this ),
 					state = stateVal,
-					classNames = value.split( rspace );
+					classNames = value.split( core_rspace );
 
 				while ( (className = classNames[ i++ ]) ) {
-					// check each className given, space seperated list
+					// check each className given, space separated list
 					state = isBool ? state : !self.hasClass( className );
 					self[ state ? "addClass" : "removeClass" ]( className );
 				}
@@ -148,7 +144,7 @@ jQuery.fn.extend({
 			i = 0,
 			l = this.length;
 		for ( ; i < l; i++ ) {
-			if ( this[i].nodeType === 1 && (" " + this[i].className + " ").replace(rclass, " ").indexOf( className ) > -1 ) {
+			if ( this[i].nodeType === 1 && (" " + this[i].className + " ").replace(rclass, " ").indexOf( className ) >= 0 ) {
 				return true;
 			}
 		}
@@ -183,7 +179,8 @@ jQuery.fn.extend({
 		isFunction = jQuery.isFunction( value );
 
 		return this.each(function( i ) {
-			var self = jQuery(this), val;
+			var val,
+				self = jQuery(this);
 
 			if ( this.nodeType !== 1 ) {
 				return;
@@ -285,16 +282,8 @@ jQuery.extend({
 		}
 	},
 
-	attrFn: {
-		val: true,
-		css: true,
-		html: true,
-		text: true,
-		data: true,
-		width: true,
-		height: true,
-		offset: true
-	},
+	// Unused in 1.8, left in so attrFn-stabbers won't die; remove in 1.9
+	attrFn: {},
 
 	attr: function( elem, name, value, pass ) {
 		var ret, hooks, notxml,
@@ -305,7 +294,7 @@ jQuery.extend({
 			return;
 		}
 
-		if ( pass && name in jQuery.attrFn ) {
+		if ( pass && jQuery.isFunction( jQuery.fn[ name ] ) ) {
 			return jQuery( elem )[ name ]( value );
 		}
 
@@ -333,7 +322,7 @@ jQuery.extend({
 				return ret;
 
 			} else {
-				elem.setAttribute( name, "" + value );
+				elem.setAttribute( name, value + "" );
 				return value;
 			}
 
@@ -352,14 +341,14 @@ jQuery.extend({
 	},
 
 	removeAttr: function( elem, value ) {
-		var propName, attrNames, name, l, isBool,
+		var propName, attrNames, name, isBool,
 			i = 0;
 
 		if ( value && elem.nodeType === 1 ) {
-			attrNames = value.toLowerCase().split( rspace );
-			l = attrNames.length;
 
-			for ( ; i < l; i++ ) {
+			attrNames = value.split( core_rspace );
+
+			for ( ; i < attrNames.length; i++ ) {
 				name = attrNames[ i ];
 
 				if ( name ) {
@@ -489,9 +478,6 @@ jQuery.extend({
 	}
 });
 
-// Add the tabIndex propHook to attrHooks for back-compat (different case is intentional)
-jQuery.attrHooks.tabindex = jQuery.propHooks.tabIndex;
-
 // Hook for boolean attributes
 boolHook = {
 	get: function( elem, name ) {
@@ -538,8 +524,8 @@ if ( !getSetAttribute ) {
 		get: function( elem, name ) {
 			var ret;
 			ret = elem.getAttributeNode( name );
-			return ret && ( fixSpecified[ name ] ? ret.nodeValue !== "" : ret.specified ) ?
-				ret.nodeValue :
+			return ret && ( fixSpecified[ name ] ? ret.value !== "" : ret.specified ) ?
+				ret.value :
 				undefined;
 		},
 		set: function( elem, value, name ) {
@@ -549,12 +535,9 @@ if ( !getSetAttribute ) {
 				ret = document.createAttribute( name );
 				elem.setAttributeNode( ret );
 			}
-			return ( ret.nodeValue = value + "" );
+			return ( ret.value = value + "" );
 		}
 	};
-
-	// Apply the nodeHook to tabindex
-	jQuery.attrHooks.tabindex.set = nodeHook.set;
 
 	// Set width and height to auto instead of 0 on empty string( Bug #8150 )
 	// This is for removals
@@ -603,7 +586,7 @@ if ( !jQuery.support.style ) {
 			return elem.style.cssText.toLowerCase() || undefined;
 		},
 		set: function( elem, value ) {
-			return ( elem.style.cssText = "" + value );
+			return ( elem.style.cssText = value + "" );
 		}
 	};
 }
@@ -653,5 +636,3 @@ jQuery.each([ "radio", "checkbox" ], function() {
 		}
 	});
 });
-
-})( jQuery );
