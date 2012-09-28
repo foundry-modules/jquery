@@ -1,3 +1,7 @@
+include ../../build/modules.mk
+DIST_DIR = dist
+JQ = ${DIST_DIR}/jquery.js
+FD = ${DIST_DIR}/foundry.js
 
 all: update_submodules
 
@@ -23,3 +27,10 @@ pull_submodules:
 	#@@git submodule summary
 
 .PHONY: all submoduleclean update_submodules pull_submodules
+
+foundry:
+	grunt --force
+	cat ${JQ} | ${RESOLVE_NAMESPACE} > ${FD}
+	@@echo "Copying built files to foundry..."
+	cp ${FD} ../../scripts_/jquery.js
+	${UGLIFYJS} ${FD} > ../../scripts/jquery.js
