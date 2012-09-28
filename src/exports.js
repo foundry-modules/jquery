@@ -1,5 +1,3 @@
-(function( jQuery ) {
-
 jQuery.version = "$FOUNDRY_VERSION";
 
 jQuery.uid = function(p,s) {
@@ -14,8 +12,15 @@ jQuery.run = function(command) {
 	return (jQuery.isFunction(command)) ? command(jQuery) : null;
 };
 
-dispatch("jQuery/@VERSION")
-	.containing(jQuery)
-	.onlyTo("$FOUNDRY_NAMESPACE Bootstrap");
+if (!dispatch) {
 
-})( jQuery );
+	try {
+		console.error("Unable to dispatch jQuery/@VERSION to $FOUNDRY_NAMESPACE Bootstrap.");
+	} catch(e) {}
+
+} else {
+
+	dispatch("jQuery/@VERSION")
+		.containing(jQuery)
+		.onlyTo("$FOUNDRY_NAMESPACE Bootstrap");
+}
