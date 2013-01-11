@@ -9,12 +9,6 @@ var
 	document = window.document,
 	location = window.location,
 
-	// Map over jQuery in case of overwrite
-	_jQuery = window.jQuery,
-
-	// Map over the $ in case of overwrite
-	_$ = window.$,
-
 	// [[Class]] -> type pairs
 	class2type = {},
 
@@ -349,14 +343,6 @@ jQuery.extend = jQuery.fn.extend = function() {
 
 jQuery.extend({
 	noConflict: function( deep ) {
-		if ( window.$ === jQuery ) {
-			window.$ = _$;
-		}
-
-		if ( deep && window.jQuery === jQuery ) {
-			window.jQuery = _jQuery;
-		}
-
 		return jQuery;
 	},
 
