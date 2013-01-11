@@ -1,12 +1,8 @@
-var rformElems = /^(?:textarea|input|select)$/i,
-	rtypenamespace = /^([^\.]*|)(?:\.(.+)|)$/,
-	rhoverHack = /(?:^|\s)hover(\.\S+|)\b/,
+var rformElems = /^(?:input|select|textarea)$/i,
 	rkeyEvent = /^key/,
 	rmouseEvent = /^(?:mouse|contextmenu)|click/,
 	rfocusMorph = /^(?:focusinfocus|focusoutblur)$/,
-	hoverHack = function( events ) {
-		return jQuery.event.special.hover ? events : events.replace( rhoverHack, "mouseenter$1 mouseleave$1" );
-	};
+	rtypenamespace = /^([^.]*)(?:\.(.+)|)$/;
 
 /*
  * Helper functions for managing events -- not part of the public interface.
@@ -15,10 +11,10 @@ var rformElems = /^(?:textarea|input|select)$/i,
 jQuery.event = {
 
 	add: function( elem, types, handler, data, selector ) {
-
 		var elemData, eventHandle, events,
-			t, tns, type, namespaces, handleObj,
-			handleObjIn, handlers, special;
+			tns, type, namespaces, handleObj,
+			handleObjIn, handlers, special,
+			t = 0;
 
 		// Don't attach events to noData or text/comment nodes (allow plain objects tho)
 		if ( elem.nodeType === 3 || elem.nodeType === 8 || !types || !handler || !(elemData = jQuery._data( elem )) ) {
@@ -57,8 +53,8 @@ jQuery.event = {
 
 		// Handle multiple events separated by a space
 		// jQuery(...).bind("mouseover mouseout", fn);
-		types = jQuery.trim( hoverHack(types) ).split( " " );
-		for ( t = 0; t < types.length; t++ ) {
+		types = ( types || "" ).match( core_rnotwhite ) || [""];
+		for ( ; t < types.length; t++ ) {
 
 			tns = rtypenamespace.exec( types[t] ) || [];
 			type = tns[1];
@@ -131,8 +127,9 @@ jQuery.event = {
 	// Detach an event or set of events from an element
 	remove: function( elem, types, handler, selector, mappedTypes ) {
 
-		var t, tns, type, origType, namespaces, origCount,
+		var tns, type, origType, namespaces, origCount,
 			j, events, special, eventType, handleObj,
+			t = 0,
 			elemData = jQuery.hasData( elem ) && jQuery._data( elem );
 
 		if ( !elemData || !(events = elemData.events) ) {
@@ -140,8 +137,8 @@ jQuery.event = {
 		}
 
 		// Once for each type.namespace in types; type may be omitted
-		types = jQuery.trim( hoverHack( types || "" ) ).split(" ");
-		for ( t = 0; t < types.length; t++ ) {
+		types = ( types || "" ).match( core_rnotwhite ) || [""];
+		for ( ; t < types.length; t++ ) {
 			tns = rtypenamespace.exec( types[t] ) || [];
 			type = origType = tns[1];
 			namespaces = tns[2];
@@ -165,9 +162,9 @@ jQuery.event = {
 				handleObj = eventType[ j ];
 
 				if ( ( mappedTypes || origType === handleObj.origType ) &&
-					 ( !handler || handler.guid === handleObj.guid ) &&
-					 ( !namespaces || namespaces.test( handleObj.namespace ) ) &&
-					 ( !selector || selector === handleObj.selector || selector === "**" && handleObj.selector ) ) {
+					( !handler || handler.guid === handleObj.guid ) &&
+					( !namespaces || namespaces.test( handleObj.namespace ) ) &&
+					( !selector || selector === handleObj.selector || selector === "**" && handleObj.selector ) ) {
 					eventType.splice( j--, 1 );
 
 					if ( handleObj.selector ) {
@@ -196,50 +193,33 @@ jQuery.event = {
 
 			// removeData also checks for emptiness and clears the expando if empty
 			// so use it instead of delete
-			jQuery.removeData( elem, "events", true );
+			jQuery._removeData( elem, "events" );
 		}
-	},
-
-	// Events that are safe to short-circuit if no handlers are attached.
-	// Native DOM events should not be added, they may have inline handlers.
-	customEvent: {
-		"getData": true,
-		"setData": true,
-		"changeData": true
 	},
 
 	trigger: function( event, data, elem, onlyHandlers ) {
+
+		var i, cur, old, ontype, special, handle, eventPath, bubbleType,
+			type = event.type || event,
+			namespaces = event.namespace ? event.namespace.split(".") : [];
+
+		elem = elem || document;
+
 		// Don't do events on text and comment nodes
-		if ( elem && (elem.nodeType === 3 || elem.nodeType === 8) ) {
+		if ( elem.nodeType === 3 || elem.nodeType === 8 ) {
 			return;
 		}
-
-		// Event object or event type
-		var cache, exclusive, i, cur, old, ontype, special, handle, eventPath, bubbleType,
-			type = event.type || event,
-			namespaces = [];
 
 		// focus/blur morphs to focusin/out; ensure we're not firing them right now
 		if ( rfocusMorph.test( type + jQuery.event.triggered ) ) {
 			return;
 		}
 
-		if ( type.indexOf( "!" ) >= 0 ) {
-			// Exclusive events trigger only for the exact event (no namespaces)
-			type = type.slice(0, -1);
-			exclusive = true;
-		}
-
-		if ( type.indexOf( "." ) >= 0 ) {
+		if ( type.indexOf(".") >= 0 ) {
 			// Namespaced trigger; create a regexp to match event type in handle()
 			namespaces = type.split(".");
 			type = namespaces.shift();
 			namespaces.sort();
-		}
-
-		if ( (!elem || jQuery.event.customEvent[ type ]) && !jQuery.event.global[ type ] ) {
-			// No jQuery handlers for this event type, and it can't have inline handlers
-			return;
 		}
 
 		// Caller can pass in an Event, Object, or just an event type string
@@ -253,23 +233,9 @@ jQuery.event = {
 
 		event.type = type;
 		event.isTrigger = true;
-		event.exclusive = exclusive;
-		event.namespace = namespaces.join( "." );
+		event.namespace = namespaces.join(".");
 		event.namespace_re = event.namespace? new RegExp("(^|\\.)" + namespaces.join("\\.(?:.*\\.|)") + "(\\.|$)") : null;
-		ontype = type.indexOf( ":" ) < 0 ? "on" + type : "";
-
-		// Handle a global trigger
-		if ( !elem ) {
-
-			// TODO: Stop taunting the data cache; remove global events and always attach to document
-			cache = jQuery.cache;
-			for ( i in cache ) {
-				if ( cache[ i ].events && cache[ i ].events[ type ] ) {
-					jQuery.event.trigger( event, data, cache[ i ].handle.elem, true );
-				}
-			}
-			return;
-		}
+		ontype = type.indexOf(":") < 0 ? "on" + type : "";
 
 		// Clean up the event in case it is being reused
 		event.result = undefined;
@@ -283,7 +249,7 @@ jQuery.event = {
 
 		// Allow special events to draw outside the lines
 		special = jQuery.event.special[ type ] || {};
-		if ( special.trigger && special.trigger.apply( elem, data ) === false ) {
+		if ( !onlyHandlers && special.trigger && special.trigger.apply( elem, data ) === false ) {
 			return;
 		}
 
@@ -332,8 +298,7 @@ jQuery.event = {
 				// Call a native DOM method on the target with the same name name as the event.
 				// Can't use an .isFunction() check here because IE6/7 fails that test.
 				// Don't do default actions on window, that's where global variables be (#6170)
-				// IE<9 dies on focus/blur to hidden element (#1486)
-				if ( ontype && elem[ type ] && ((type !== "focus" && type !== "blur") || event.target.offsetWidth !== 0) && !jQuery.isWindow( elem ) ) {
+				if ( ontype && elem[ type ] && !jQuery.isWindow( elem ) ) {
 
 					// Don't re-trigger an onFOO event when we call its FOO() method
 					old = elem[ ontype ];
@@ -344,7 +309,12 @@ jQuery.event = {
 
 					// Prevent re-triggering of the same event, since we already bubbled it above
 					jQuery.event.triggered = type;
-					elem[ type ]();
+					try {
+						elem[ type ]();
+					} catch ( e ) {
+						// IE<9 dies on focus/blur to hidden element (#1486,#12518)
+						// only reproducible on winXP IE8 native, not IE9 in IE8 mode
+					}
 					jQuery.event.triggered = undefined;
 
 					if ( old ) {
@@ -360,13 +330,12 @@ jQuery.event = {
 	dispatch: function( event ) {
 
 		// Make a writable jQuery.Event from the native event object
-		event = jQuery.event.fix( event || window.event );
+		event = jQuery.event.fix( event );
 
-		var i, j, cur, ret, selMatch, matched, matches, handleObj, sel, related,
+		var i, j, cur, ret, selMatch, matched, matches, handleObj, sel,
 			handlers = ( (jQuery._data( this, "events" ) || {} )[ event.type ] || []),
 			delegateCount = handlers.delegateCount,
 			args = core_slice.call( arguments ),
-			run_all = !event.exclusive && !event.namespace,
 			special = jQuery.event.special[ event.type ] || {},
 			handlerQueue = [];
 
@@ -422,9 +391,9 @@ jQuery.event = {
 			for ( j = 0; j < matched.matches.length && !event.isImmediatePropagationStopped(); j++ ) {
 				handleObj = matched.matches[ j ];
 
-				// Triggered event must either 1) be non-exclusive and have no namespace, or
+				// Triggered event must either 1) have no namespace, or
 				// 2) have namespace(s) a subset or equal to those in the bound event (both can have no namespace).
-				if ( run_all || (!event.namespace && !handleObj.namespace) || event.namespace_re && event.namespace_re.test( handleObj.namespace ) ) {
+				if ( !event.namespace || event.namespace_re && event.namespace_re.test( handleObj.namespace ) ) {
 
 					event.data = handleObj.data;
 					event.handleObj = handleObj;
@@ -452,8 +421,7 @@ jQuery.event = {
 	},
 
 	// Includes some event props shared by KeyEvent and MouseEvent
-	// *** attrChange attrName relatedNode srcElement  are not normalized, non-W3C, deprecated, will be removed in 1.8 ***
-	props: "attrChange attrName relatedNode srcElement altKey bubbles cancelable ctrlKey currentTarget eventPhase metaKey relatedTarget shiftKey target timeStamp view which".split(" "),
+	props: "altKey bubbles cancelable ctrlKey currentTarget eventPhase metaKey relatedTarget shiftKey target timeStamp view which".split(" "),
 
 	fixHooks: {},
 
@@ -541,25 +509,46 @@ jQuery.event = {
 			// Prevent triggered image.load events from bubbling to window.load
 			noBubble: true
 		},
-
+		click: {
+			// For checkbox, fire native event so checked state will be right
+			trigger: function() {
+				if ( jQuery.nodeName( this, "input" ) && this.type === "checkbox" && this.click ) {
+					this.click();
+					return false;
+				}
+			}
+		},
 		focus: {
+			// Fire native event if possible so blur/focus sequence is correct
+			trigger: function() {
+				if ( this !== document.activeElement && this.focus ) {
+					try {
+						this.focus();
+						return false;
+					} catch ( e ) {
+						// IE<9 dies on focus to hidden element (#1486,#12518)
+						// If this happens, let .trigger() run the handlers
+					}
+				}
+			},
 			delegateType: "focusin"
 		},
 		blur: {
+			trigger: function() {
+				if ( this === document.activeElement && this.blur ) {
+					this.blur();
+					return false;
+				}
+			},
 			delegateType: "focusout"
 		},
 
 		beforeunload: {
-			setup: function( data, namespaces, eventHandle ) {
-				// We only want to do this special case on windows
-				if ( jQuery.isWindow( this ) ) {
-					this.onbeforeunload = eventHandle;
-				}
-			},
+			postDispatch: function( event ) {
 
-			teardown: function( namespaces, eventHandle ) {
-				if ( this.onbeforeunload === eventHandle ) {
-					this.onbeforeunload = null;
+				// Even when returnValue equals to undefined Firefox will still show alert
+				if ( event.result !== undefined ) {
+					event.originalEvent.returnValue = event.result;
 				}
 			}
 		}
@@ -603,7 +592,7 @@ jQuery.removeEvent = document.removeEventListener ?
 
 		if ( elem.detachEvent ) {
 
-			// #8545, #7054, preventing memory leaks for custom events in IE6-8 –
+			// #8545, #7054, preventing memory leaks for custom events in IE6-8
 			// detachEvent needed property on element, by name of that event, to properly expose it to GC
 			if ( typeof elem[ name ] === "undefined" ) {
 				elem[ name ] = null;
@@ -709,8 +698,7 @@ jQuery.each({
 			var ret,
 				target = this,
 				related = event.relatedTarget,
-				handleObj = event.handleObj,
-				selector = handleObj.selector;
+				handleObj = event.handleObj;
 
 			// For mousenter/leave call the handler if related is outside the target.
 			// NB: No relatedTarget if the mouse left/entered the browser window
@@ -952,15 +940,6 @@ jQuery.fn.extend({
 		return this.off( types, null, fn );
 	},
 
-	live: function( types, data, fn ) {
-		jQuery( this.context ).on( types, this.selector, data, fn );
-		return this;
-	},
-	die: function( types, fn ) {
-		jQuery( this.context ).off( types, this.selector || "**", fn );
-		return this;
-	},
-
 	delegate: function( selector, types, data, fn ) {
 		return this.on( types, selector, data, fn );
 	},
@@ -980,32 +959,6 @@ jQuery.fn.extend({
 		}
 	},
 
-	toggle: function( fn ) {
-		// Save reference to arguments for access in closure
-		var args = arguments,
-			guid = fn.guid || jQuery.guid++,
-			i = 0,
-			toggler = function( event ) {
-				// Figure out which function to execute
-				var lastToggle = ( jQuery._data( this, "lastToggle" + fn.guid ) || 0 ) % i;
-				jQuery._data( this, "lastToggle" + fn.guid, lastToggle + 1 );
-
-				// Make sure that clicks stop
-				event.preventDefault();
-
-				// and execute the function
-				return args[ lastToggle ].apply( this, arguments ) || false;
-			};
-
-		// link all the functions, so any of them can unbind this click handler
-		toggler.guid = guid;
-		while ( i < args.length ) {
-			args[ i++ ].guid = guid;
-		}
-
-		return this.click( toggler );
-	},
-
 	hover: function( fnOver, fnOut ) {
 		return this.mouseenter( fnOver ).mouseleave( fnOut || fnOver );
 	}
@@ -1017,11 +970,6 @@ jQuery.each( ("blur focus focusin focusout load resize scroll unload click dblcl
 
 	// Handle event binding
 	jQuery.fn[ name ] = function( data, fn ) {
-		if ( fn == null ) {
-			fn = data;
-			data = null;
-		}
-
 		return arguments.length > 0 ?
 			this.on( name, null, data, fn ) :
 			this.trigger( name );

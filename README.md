@@ -197,7 +197,7 @@ Updating Submodules
 Update the submodules to what is probably the latest upstream code.
 
 ```bash
-grunt submodules
+grunt update_submodules
 ```
 
 Note: This task will also be run any time the default `grunt` command is used.
@@ -211,7 +211,7 @@ As the source code is handled by the version control system Git, it's useful to 
 
 ### Submodules ###
 
-The repository uses submodules, which normally are handled directly by the Makefile, but sometimes you want to
+The repository uses submodules, which normally are handled directly by the `grunt update_submodules` command, but sometimes you want to
 be able to work with them manually.
 
 Following are the steps to manually get the submodules:
