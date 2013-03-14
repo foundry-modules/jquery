@@ -41,9 +41,9 @@ module.exports = function( grunt ) {
 		meta: {
 			banner: "/*! jQuery v<%= pkg.version %> jquery.com | jquery.org/license */"
 		},
-		compare_size: {
-			files: distpaths
-		},
+		// compare_size: {
+		// 	files: distpaths
+		// },
 		selector: {
 			"src/selector.js": [
 				"src/sizzle-jquery.js",
@@ -116,13 +116,13 @@ module.exports = function( grunt ) {
 	});
 
 	// Default grunt.
-	grunt.registerTask( "default", "submodules selector build:*:* lint min dist:* compare_size" );
+	grunt.registerTask( "default", "submodules selector build:*:* lint min dist:*" );
 
 	// Short list as a high frequency watch task
 	grunt.registerTask( "dev", "selector build:*:* lint" );
 
 	// Load grunt tasks from NPM packages
-	grunt.loadNpmTasks( "grunt-compare-size" );
+	// grunt.loadNpmTasks( "grunt-compare-size" );
 	grunt.loadNpmTasks( "grunt-git-authors" );
 
 	grunt.registerTask( "testswarm", function( commit, configFile ) {
