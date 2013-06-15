@@ -1,9 +1,10 @@
-include ../../build/modules.mk
-DIST_DIR = dist
-JQ = ${DIST_DIR}/jquery.js
-FD = ${DIST_DIR}/foundry.js
+all: resolve-namespace minify
 
-all: update_submodules
+include ../../build/modules.mk
+
+MODULE = jquery
+SOURCE_DIR = dist
+FILENAME_PREFIX = 
 
 submoduleclean: clean
 	@@echo "Removing submodules"
@@ -30,7 +31,3 @@ pull_submodules:
 
 foundry:
 	grunt --force
-	cat ${JQ} | ${RESOLVE_NAMESPACE} > ${FD}
-	@@echo "Copying built files to foundry..."
-	cp ${FD} ../../scripts_/jquery.js
-	${UGLIFYJS} ${FD} > ../../scripts/jquery.js
