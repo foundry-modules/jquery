@@ -342,7 +342,7 @@ jQuery.extend = jQuery.fn.extend = function() {
 };
 
 jQuery.extend({
-	noConflict: function( deep ) {
+	noConflict: function( ) {
 		return jQuery;
 	},
 

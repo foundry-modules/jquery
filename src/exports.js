@@ -1,7 +1,7 @@
 jQuery.version = "$FOUNDRY_VERSION";
 
 jQuery.uid = function(p,s) {
-	return ((p) ? p : '') + Math.random().toString().replace('.','') + ((s) ? s : '');
+	return ((p) ? p : "") + Math.random().toString().replace(".","") + ((s) ? s : "");
 };
 
 jQuery.globalNamespace = jQuery.uid("Foundry");

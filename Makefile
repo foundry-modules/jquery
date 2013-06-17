@@ -1,10 +1,10 @@
-all: resolve-namespace minify
+all: build resolve-namespace minify-script
 
 include ../../build/modules.mk
 
 MODULE = jquery
-SOURCE_DIR = dist
-FILENAME_PREFIX = 
+SOURCE_SCRIPT_FOLDER = dist
+SOURCE_SCRIPT_FILE_PREFIX = 
 
 submoduleclean: clean
 	@@echo "Removing submodules"
@@ -27,7 +27,7 @@ pull_submodules:
 	@@git submodule foreach "git pull \$$(git config remote.origin.url)"
 	#@@git submodule summary
 
-.PHONY: all submoduleclean update_submodules pull_submodules
+.PHONY: all submoduleclean update_submodules pull_submodules build
 
-foundry:
+build:
 	grunt --force
