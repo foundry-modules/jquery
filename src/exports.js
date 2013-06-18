@@ -15,12 +15,12 @@ jQuery.run = function(command) {
 if (!dispatch) {
 
 	try {
-		console.error("Unable to dispatch jQuery/@VERSION to $FOUNDRY_NAMESPACE Bootstrap.");
+		console.error("Unable to dispatch jQuery/@VERSION to $FOUNDRY_NAMESPACE Configuration.");
 	} catch(e) {}
 
 } else {
 
 	dispatch("jQuery/@VERSION")
 		.containing(jQuery)
-		.onlyTo("$FOUNDRY_NAMESPACE Bootstrap");
+		.onlyTo("$FOUNDRY_NAMESPACE Configuration");
 }
