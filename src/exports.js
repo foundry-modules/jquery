@@ -12,7 +12,7 @@ jQuery.run = function(command) {
 	return (jQuery.isFunction(command)) ? command(jQuery) : null;
 };
 
-if (!dispatch) {
+if (!Dispatch) {
 
 	try {
 		console.error("Unable to dispatch jQuery/@VERSION to $FOUNDRY_NAMESPACE Configuration.");
@@ -20,7 +20,7 @@ if (!dispatch) {
 
 } else {
 
-	dispatch("jQuery/@VERSION")
+	Dispatch("jQuery/@VERSION")
 		.containing(jQuery)
 		.onlyTo("$FOUNDRY_NAMESPACE Configuration");
 }
