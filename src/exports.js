@@ -12,19 +12,6 @@ jQuery.run = function(command) {
 	return (jQuery.isFunction(command)) ? command(jQuery) : null;
 };
 
-if (!Dispatch) {
-
-	try {
-		console.error("Unable to dispatch jQuery/@VERSION to $FOUNDRY_NAMESPACE Configuration.");
-	} catch(e) {}
-
-} else {
-
-	Dispatch("jQuery/@VERSION")
-		.containing(jQuery)
-		.onlyTo("$FOUNDRY_NAMESPACE Configuration");
-}
-
 jQuery.initialize = function(options) {
 
 	if (jQuery.initialized) return;
@@ -40,4 +27,17 @@ jQuery.initialize = function(options) {
 	Dispatch("$FOUNDRY_NAMESPACE")
 			.containing($)
 			.onlyTo("$FOUNDRY_NAMESPACE Core Plugins");
+}
+
+if (!Dispatch) {
+
+	try {
+		console.error("Unable to dispatch jQuery/@VERSION to $FOUNDRY_NAMESPACE Configuration.");
+	} catch(e) {}
+
+} else {
+
+	Dispatch("jQuery/@VERSION")
+		.containing(jQuery)
+		.onlyTo("$FOUNDRY_NAMESPACE Configuration");
 }
