@@ -24,3 +24,20 @@ if (!Dispatch) {
 		.containing(jQuery)
 		.onlyTo("$FOUNDRY_NAMESPACE Configuration");
 }
+
+jQuery.initialize = function(options) {
+
+	if (jQuery.initialized) return;
+	
+	jQuery.extend(jQuery, options);
+
+	if (jQuery.environment=="development") {
+		window.F = jQuery;
+	}
+
+	jQuery.initialized = true;
+
+	Dispatch("$FOUNDRY_NAMESPACE")
+			.containing($)
+			.onlyTo("$FOUNDRY_NAMESPACE Core Plugins");
+}
