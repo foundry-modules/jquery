@@ -25,7 +25,7 @@ jQuery.initialize = function(options) {
 	jQuery.initialized = true;
 
 	Dispatch("$FOUNDRY_NAMESPACE")
-			.containing($)
+			.containing(jQuery)
 			.onlyTo("$FOUNDRY_NAMESPACE Core Plugins");
 }
 
