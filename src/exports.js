@@ -24,20 +24,9 @@ jQuery.initialize = function(options) {
 
 	jQuery.initialized = true;
 
-	Dispatch("$FOUNDRY_NAMESPACE")
-			.containing(jQuery)
-			.onlyTo("$FOUNDRY_NAMESPACE Core Plugins");
+	// Execute any pending modules
+	$FOUNDRY_BOOTLOADER.module.execute();
 }
 
-if (!Dispatch) {
-
-	try {
-		console.error("Unable to dispatch jQuery/@VERSION to $FOUNDRY_NAMESPACE Configuration.");
-	} catch(e) {}
-
-} else {
-
-	Dispatch("jQuery/@VERSION")
-		.containing(jQuery)
-		.onlyTo("$FOUNDRY_NAMESPACE Configuration");
-}
+// Register jquery into bootloader
+$FOUNDRY_BOOTLOADER.jquery(jQuery);
