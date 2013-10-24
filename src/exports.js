@@ -25,8 +25,8 @@ jQuery.initialize = function(options) {
 	jQuery.initialized = true;
 
 	// Execute any pending modules
-	$FOUNDRY_BOOTLOADER.module.execute();
+	%BOOTCODE%.module.execute();
 }
 
 // Register jquery into bootloader
-$FOUNDRY_BOOTLOADER.jquery(jQuery);
+%BOOTCODE%.jquery(jQuery);
