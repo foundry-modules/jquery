@@ -1,4 +1,5 @@
 jQuery.version = "$FOUNDRY_VERSION";
+jQuery.long_version = "$FOUNDRY_LONG_VERSION";
 
 jQuery.uid = function(p,s) {
 	return ((p) ? p : "") + Math.random().toString().replace(".","") + ((s) ? s : "");
