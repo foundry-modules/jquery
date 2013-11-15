@@ -9,23 +9,23 @@
 	<!-- Includes -->
 
 	<!-- Allows us to fetch submodule tests when using a no-ajax build -->
-	<script src="data/jquery-1.8.2.ajax_xhr.min.js"></script>
+	<script src="data/jquery-1.9.1.ajax_xhr.min.js"></script>
 
 	<script src="data/testinit.js"></script>
 
 	<script src="qunit/qunit/qunit.js"></script>
 	<script>
 		(function() {
-			var src = "../dist/jquery.js";
+			var src = "../dist/jquery.min.js";
 
 			// Config parameter to use minified jQuery
 			QUnit.config.urlConfig.push({
-				id: "min",
-				label: "Load minified",
-				tooltip: "Load the minified version of the jQuery build"
+				id: "dev",
+				label: "Load unminified",
+				tooltip: "Load the development (unminified) jQuery file"
 			});
-			if ( QUnit.urlParams.min ) {
-				src = "../dist/jquery.min.js";
+			if ( QUnit.urlParams.dev ) {
+				src = "../dist/jquery.js";
 			}
 
 			// Config parameter to force basic code paths
@@ -41,7 +41,7 @@
 			}
 
 			// Load jQuery
-			document.write( "<script src='" + src + "'><\/script>" );
+			document.write( "<script id='jquery-js' src='" + src + "'><\x2Fscript>" );
 		})();
 	</script>
 	<script src="data/testrunner.js"></script>
@@ -57,6 +57,7 @@
 	<script src="unit/selector.js"></script>
 	<script src="unit/traversing.js"></script>
 	<script src="unit/manipulation.js"></script>
+	<script src="unit/wrap.js"></script>
 	<script src="unit/css.js"></script>
 	<script src="unit/serialize.js"></script>
 	<script src="unit/ajax.js"></script>
@@ -87,7 +88,7 @@
 	<!-- Test HTML -->
 	<!-- this iframe is outside the #qunit-fixture so it won't reload constantly wasting time, but it means the tests must be "safe" and clean up after themselves -->
 	<iframe id="loadediframe" name="loadediframe" style="display:none;" src="data/iframe.html"></iframe>
-	<dl id="dl" style="position:absolute;top:-32767px;left:-32767px;width:1px">
+	<dl id="dl" style="position:absolute;top:-32767px;left:-32767px;width:1px;">
 	<div id="qunit-fixture">
 		<p id="firstp">See <a id="simon1" href="http://simon.incutio.com/archive/2003/03/25/#getElementsBySelector" rel="bookmark">this blog entry</a> for more information.</p>
 		<p id="ap">
@@ -247,7 +248,7 @@ Z</textarea>
 					<input type="checkbox" name="checkedtestcheckboxes" />
 				</div>
 			</form>
-			<div id="nonnodes"><span>hi</span> there <!-- mon ami --></div>
+			<div id="nonnodes"><span id="nonnodesElement">hi</span> there <!-- mon ami --></div>
 			<div id="t2037">
 				<div><div class="hidden">hidden</div></div>
 			</div>
@@ -272,6 +273,12 @@ Z</textarea>
 			<span>...</span><a id="linkWithNoHrefWithNoTabIndex">Eat a burger</a><span>...</span>
 			<span>...</span><a id="linkWithNoHrefWithTabIndex" tabindex="1">Eat some funyuns</a><span>...</span>
 			<span>...</span><a id="linkWithNoHrefWithNegativeTabIndex" tabindex="-1">Eat some funyuns</a><span>...</span>
+			<input id="inputWithoutTabIndex"/>
+			<button id="buttonWithoutTabIndex"></button>
+			<textarea id="textareaWithoutTabIndex"></textarea>
+			<menu type="popup">
+				<menuitem id="menuitemWithoutTabIndex" command="submitbutton" default/>
+			</menu>
 		</div>
 
 		<div id="liveHandlerOrder">
@@ -318,6 +325,7 @@ Z</textarea>
 			</div>
 
 			<div id="fx-tests"></div>
+			<span id="display"></span>
 		</div>
 	</div>
 	</dl>

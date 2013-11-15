@@ -1,26 +1,30 @@
 {
+	"boss": true,
 	"curly": true,
-    "expr": true,
-	"newcap": false,
-	"quotmark": "double",
-	"regexdash": true,
-	"strict": true,
-    "trailing": true,
-    "undef": true,
-	"unused": true,
-	"maxerr": 100,
-
+	"eqeqeq": true,
 	"eqnull": true,
+	"expr": true,
+	"immed": true,
+	"noarg": true,
+	"onevar": true,
+	"quotmark": "double",
+	"smarttabs": true,
+	"trailing": true,
+	"undef": true,
+	"unused": true,
+
 	"evil": true,
-    "sub": true,
+	"sub": true,
 
 	"browser": true,
 	"wsh": true,
 
-	"predef": [
-		"define",
-		"jQuery",
-		"console",
-		"dispatch"
-	]
+	"globals": {
+		"define": true,
+		"module": true,
+		"jQuery": true
+		"console": true,
+       
+   			
+			}
 }

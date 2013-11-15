@@ -1,4 +1,4 @@
-var curCSS, getStyles, iframe,
+var iframe, getStyles, curCSS,
 	ralpha = /alpha\([^)]*\)/i,
 	ropacity = /opacity\s*=\s*([^)]*)/,
 	rposition = /^(top|right|bottom|left)$/,
@@ -51,7 +51,7 @@ function isHidden( elem, el ) {
 }
 
 function showHide( elements, show ) {
-	var elem,
+	var display, elem, hidden,
 		values = [],
 		index = 0,
 		length = elements.length;
@@ -61,11 +61,13 @@ function showHide( elements, show ) {
 		if ( !elem.style ) {
 			continue;
 		}
+
 		values[ index ] = jQuery._data( elem, "olddisplay" );
+		display = elem.style.display;
 		if ( show ) {
 			// Reset the inline display of this element to learn if it is
 			// being hidden by cascaded rules or not
-			if ( !values[ index ] && elem.style.display === "none" ) {
+			if ( !values[ index ] && display === "none" ) {
 				elem.style.display = "";
 			}
 
@@ -75,8 +77,15 @@ function showHide( elements, show ) {
 			if ( elem.style.display === "" && isHidden( elem ) ) {
 				values[ index ] = jQuery._data( elem, "olddisplay", css_defaultDisplay(elem.nodeName) );
 			}
-		} else if ( !values[ index ] && !isHidden( elem ) ) {
-			jQuery._data( elem, "olddisplay", jQuery.css( elem, "display" ) );
+		} else {
+
+			if ( !values[ index ] ) {
+				hidden = isHidden( elem );
+
+				if ( display && display !== "none" || !hidden ) {
+					jQuery._data( elem, "olddisplay", hidden ? display : jQuery.css( elem, "display" ) );
+				}
+			}
 		}
 	}
 
@@ -98,7 +107,7 @@ function showHide( elements, show ) {
 jQuery.fn.extend({
 	css: function( name, value ) {
 		return jQuery.access( this, function( elem, name, value ) {
-			var styles, len,
+			var len, styles,
 				map = {},
 				i = 0;
 
@@ -125,10 +134,12 @@ jQuery.fn.extend({
 		return showHide( this );
 	},
 	toggle: function( state ) {
-		var bool = typeof state === "boolean";
+		if ( typeof state === "boolean" ) {
+			return state ? this.show() : this.hide();
+		}
 
 		return this.each(function() {
-			if ( bool ? state : isHidden( this ) ) {
+			if ( isHidden( this ) ) {
 				jQuery( this ).show();
 			} else {
 				jQuery( this ).hide();
@@ -152,13 +163,14 @@ jQuery.extend({
 		}
 	},
 
-	// Exclude the following css properties to add px
+	// Don't automatically add "px" to these possibly-unitless properties
 	cssNumber: {
 		"columnCount": true,
 		"fillOpacity": true,
 		"fontWeight": true,
 		"lineHeight": true,
 		"opacity": true,
+		"order": true,
 		"orphans": true,
 		"widows": true,
 		"zIndex": true,
@@ -239,7 +251,7 @@ jQuery.extend({
 	},
 
 	css: function( elem, name, extra, styles ) {
-		var val, num, hooks,
+		var num, val, hooks,
 			origName = jQuery.camelCase( name );
 
 		// Make sure that we're working with the right name
@@ -265,32 +277,11 @@ jQuery.extend({
 		}
 
 		// Return, converting to number if forced or a qualifier was provided and val looks numeric
-		if ( extra ) {
+		if ( extra === "" || extra ) {
 			num = parseFloat( val );
 			return extra === true || jQuery.isNumeric( num ) ? num || 0 : val;
 		}
 		return val;
-	},
-
-	// A method for quickly swapping in/out CSS properties to get correct calculations
-	swap: function( elem, options, callback, args ) {
-		var ret, name,
-			old = {};
-
-		// Remember the old values, and insert the new ones
-		for ( name in options ) {
-			old[ name ] = elem.style[ name ];
-			elem.style[ name ] = options[ name ];
-		}
-
-		ret = callback.apply( elem, args || [] );
-
-		// Revert the old values
-		for ( name in options ) {
-			elem.style[ name ] = old[ name ];
-		}
-
-		return ret;
 	}
 });
 
@@ -630,7 +621,10 @@ jQuery(function() {
 
 if ( jQuery.expr && jQuery.expr.filters ) {
 	jQuery.expr.filters.hidden = function( elem ) {
-		return ( elem.offsetWidth === 0 && elem.offsetHeight === 0 ) || (!jQuery.support.reliableHiddenOffsets && ((elem.style && elem.style.display) || jQuery.css( elem, "display" )) === "none");
+		// Support: Opera <= 12.12
+		// Opera reports offsetWidths and offsetHeights less than zero on some elements
+		return elem.offsetWidth <= 0 && elem.offsetHeight <= 0 ||
+			(!jQuery.support.reliableHiddenOffsets && ((elem.style && elem.style.display) || jQuery.css( elem, "display" )) === "none");
 	};
 
 	jQuery.expr.filters.visible = function( elem ) {

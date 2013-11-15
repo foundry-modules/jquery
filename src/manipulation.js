@@ -28,19 +28,21 @@ var nodeNames = "abbr|article|aside|audio|bdi|canvas|data|datalist|details|figca
 	rscriptType = /^$|\/(?:java|ecma)script/i,
 	rscriptTypeMasked = /^true\/(.*)/,
 	rcleanScript = /^\s*<!(?:\[CDATA\[|--)|(?:\]\]|--)>\s*$/g,
+
+	// We have to close these tags to support XHTML (#13200)
 	wrapMap = {
-		option: [ 1, "<select multiple='multiple'>" ],
-		legend: [ 1, "<fieldset>" ],
-		area: [ 1, "<map>" ],
-		param: [ 1, "<object>" ],
-		thead: [ 1, "<table>"  ],
-		tr: [ 2, "<table><tbody>" ],
-		col: [ 2, "<table><tbody></tbody><colgroup>", "</table>" ],
-		td: [ 3, "<table><tbody><tr>" ],
+		option: [ 1, "<select multiple='multiple'>", "</select>" ],
+		legend: [ 1, "<fieldset>", "</fieldset>" ],
+		area: [ 1, "<map>", "</map>" ],
+		param: [ 1, "<object>", "</object>" ],
+		thead: [ 1, "<table>", "</table>" ],
+		tr: [ 2, "<table><tbody>", "</tbody></table>" ],
+		col: [ 2, "<table><tbody></tbody><colgroup>", "</colgroup></table>" ],
+		td: [ 3, "<table><tbody><tr>", "</tr></tbody></table>" ],
 
 		// IE6-8 can't serialize link, script, style, or any html5 (NoScope) tags,
 		// unless wrapped in a div with non-breaking characters in front of it.
-		_default: jQuery.support.htmlSerialize ? [ 0, "" ] : [ 1, "X<div>"  ]
+		_default: jQuery.support.htmlSerialize ? [ 0, "", "" ] : [ 1, "X<div>", "</div>"  ]
 	},
 	safeFragment = createSafeFragment( document ),
 	fragmentDiv = safeFragment.appendChild( document.createElement("div") );
@@ -58,89 +60,26 @@ jQuery.fn.extend({
 		}, null, value, arguments.length );
 	},
 
-	wrapAll: function( html ) {
-		if ( jQuery.isFunction( html ) ) {
-			return this.each(function(i) {
-				jQuery(this).wrapAll( html.call(this, i) );
-			});
-		}
-
-		if ( this[0] ) {
-			// The elements to wrap the target around
-			var wrap = jQuery( html, this[0].ownerDocument ).eq(0).clone(true);
-
-			if ( this[0].parentNode ) {
-				wrap.insertBefore( this[0] );
-			}
-
-			wrap.map(function() {
-				var elem = this;
-
-				while ( elem.firstChild && elem.firstChild.nodeType === 1 ) {
-					elem = elem.firstChild;
-				}
-
-				return elem;
-			}).append( this );
-		}
-
-		return this;
-	},
-
-	wrapInner: function( html ) {
-		if ( jQuery.isFunction( html ) ) {
-			return this.each(function(i) {
-				jQuery(this).wrapInner( html.call(this, i) );
-			});
-		}
-
-		return this.each(function() {
-			var self = jQuery( this ),
-				contents = self.contents();
-
-			if ( contents.length ) {
-				contents.wrapAll( html );
-
-			} else {
-				self.append( html );
-			}
-		});
-	},
-
-	wrap: function( html ) {
-		var isFunction = jQuery.isFunction( html );
-
-		return this.each(function(i) {
-			jQuery( this ).wrapAll( isFunction ? html.call(this, i) : html );
-		});
-	},
-
-	unwrap: function() {
-		return this.parent().each(function() {
-			if ( !jQuery.nodeName( this, "body" ) ) {
-				jQuery( this ).replaceWith( this.childNodes );
-			}
-		}).end();
-	},
-
 	append: function() {
-		return this.domManip(arguments, true, function( elem ) {
+		return this.domManip( arguments, function( elem ) {
 			if ( this.nodeType === 1 || this.nodeType === 11 || this.nodeType === 9 ) {
-				this.appendChild( elem );
+				var target = manipulationTarget( this, elem );
+				target.appendChild( elem );
 			}
 		});
 	},
 
 	prepend: function() {
-		return this.domManip(arguments, true, function( elem ) {
+		return this.domManip( arguments, function( elem ) {
 			if ( this.nodeType === 1 || this.nodeType === 11 || this.nodeType === 9 ) {
-				this.insertBefore( elem, this.firstChild );
+				var target = manipulationTarget( this, elem );
+				target.insertBefore( elem, target.firstChild );
 			}
 		});
 	},
 
 	before: function() {
-		return this.domManip( arguments, false, function( elem ) {
+		return this.domManip( arguments, function( elem ) {
 			if ( this.parentNode ) {
 				this.parentNode.insertBefore( elem, this );
 			}
@@ -148,7 +87,7 @@ jQuery.fn.extend({
 	},
 
 	after: function() {
-		return this.domManip( arguments, false, function( elem ) {
+		return this.domManip( arguments, function( elem ) {
 			if ( this.parentNode ) {
 				this.parentNode.insertBefore( elem, this.nextSibling );
 			}
@@ -158,20 +97,20 @@ jQuery.fn.extend({
 	// keepData is for internal use only--do not document
 	remove: function( selector, keepData ) {
 		var elem,
+			elems = selector ? jQuery.filter( selector, this ) : this,
 			i = 0;
 
-		for ( ; (elem = this[i]) != null; i++ ) {
-			if ( !selector || jQuery.filter( selector, [ elem ] ).length > 0 ) {
-				if ( !keepData && elem.nodeType === 1 ) {
-					jQuery.cleanData( getAll( elem ) );
-				}
+		for ( ; (elem = elems[i]) != null; i++ ) {
 
-				if ( elem.parentNode ) {
-					if ( keepData && jQuery.contains( elem.ownerDocument, elem ) ) {
-						setGlobalEval( getAll( elem, "script" ) );
-					}
-					elem.parentNode.removeChild( elem );
+			if ( !keepData && elem.nodeType === 1 ) {
+				jQuery.cleanData( getAll( elem ) );
+			}
+
+			if ( elem.parentNode ) {
+				if ( keepData && jQuery.contains( elem.ownerDocument, elem ) ) {
+					setGlobalEval( getAll( elem, "script" ) );
 				}
+				elem.parentNode.removeChild( elem );
 			}
 		}
 
@@ -254,42 +193,45 @@ jQuery.fn.extend({
 		}, null, value, arguments.length );
 	},
 
-	replaceWith: function( value ) {
-		var isFunc = jQuery.isFunction( value );
+	replaceWith: function() {
+		var
+			// Snapshot the DOM in case .domManip sweeps something relevant into its fragment
+			args = jQuery.map( this, function( elem ) {
+				return [ elem.nextSibling, elem.parentNode ];
+			}),
+			i = 0;
 
-		// Make sure that the elements are removed from the DOM before they are inserted
-		// this can help fix replacing a parent with child elements
-		if ( !isFunc && typeof value !== "string" ) {
-			value = jQuery( value ).not( this ).detach();
-		}
+		// Make the changes, replacing each context element with the new content
+		this.domManip( arguments, function( elem ) {
+			var next = args[ i++ ],
+				parent = args[ i++ ];
 
-		return this.domManip( [ value ], true, function( elem ) {
-			var next = this.nextSibling,
-				parent = this.parentNode;
-
-			if ( parent && this.nodeType === 1 || this.nodeType === 11 ) {
-
-				jQuery( this ).remove();
-
-				if ( next ) {
-					next.parentNode.insertBefore( elem, next );
-				} else {
-					parent.appendChild( elem );
+			if ( parent ) {
+				// Don't use the snapshot next if it has moved (#13810)
+				if ( next && next.parentNode !== parent ) {
+					next = this.nextSibling;
 				}
+				jQuery( this ).remove();
+				parent.insertBefore( elem, next );
 			}
-		});
+		// Allow new content to include elements from the context set
+		}, true );
+
+		// Force removal if there was no new content (e.g., from empty arguments)
+		return i ? this : this.remove();
 	},
 
 	detach: function( selector ) {
 		return this.remove( selector, true );
 	},
 
-	domManip: function( args, table, callback ) {
+	domManip: function( args, callback, allowIntersection ) {
 
 		// Flatten any nested arrays
 		args = core_concat.apply( [], args );
 
-		var fragment, first, scripts, hasScripts, node, doc,
+		var first, node, hasScripts,
+			scripts, doc, fragment,
 			i = 0,
 			l = this.length,
 			set = this,
@@ -302,15 +244,14 @@ jQuery.fn.extend({
 			return this.each(function( index ) {
 				var self = set.eq( index );
 				if ( isFunction ) {
-					args[0] = value.call( this, index, table ? self.html() : undefined );
+					args[0] = value.call( this, index, self.html() );
 				}
-				self.domManip( args, table, callback );
+				self.domManip( args, callback, allowIntersection );
 			});
 		}
 
-		if ( this[0] ) {
-			doc = this[0].ownerDocument;
-			fragment = jQuery.buildFragment( args, doc, false, this );
+		if ( l ) {
+			fragment = jQuery.buildFragment( args, this[ 0 ].ownerDocument, false, !allowIntersection && this );
 			first = fragment.firstChild;
 
 			if ( fragment.childNodes.length === 1 ) {
@@ -318,7 +259,6 @@ jQuery.fn.extend({
 			}
 
 			if ( first ) {
-				table = table && jQuery.nodeName( first, "tr" );
 				scripts = jQuery.map( getAll( fragment, "script" ), disableScript );
 				hasScripts = scripts.length;
 
@@ -336,13 +276,7 @@ jQuery.fn.extend({
 						}
 					}
 
-					callback.call(
-						table && jQuery.nodeName( this[i], "table" ) ?
-							findOrAppend( this[i], "tbody" ) :
-							this[i],
-						node,
-						i
-					);
+					callback.call( this[i], node, i );
 				}
 
 				if ( hasScripts ) {
@@ -359,14 +293,7 @@ jQuery.fn.extend({
 
 							if ( node.src ) {
 								// Hope ajax is available...
-								jQuery.ajax({
-									url: node.src,
-									type: "GET",
-									dataType: "script",
-									async: false,
-									global: false,
-									"throws": true
-								});
+								jQuery._evalUrl( node.src );
 							} else {
 								jQuery.globalEval( ( node.text || node.textContent || node.innerHTML || "" ).replace( rcleanScript, "" ) );
 							}
@@ -383,14 +310,20 @@ jQuery.fn.extend({
 	}
 });
 
-function findOrAppend( elem, tag ) {
-	return elem.getElementsByTagName( tag )[0] || elem.appendChild( elem.ownerDocument.createElement( tag ) );
+// Support: IE<8
+// Manipulating tables requires a tbody
+function manipulationTarget( elem, content ) {
+	return jQuery.nodeName( elem, "table" ) &&
+		jQuery.nodeName( content.nodeType === 1 ? content : content.firstChild, "tr" ) ?
+
+		elem.getElementsByTagName("tbody")[0] ||
+			elem.appendChild( elem.ownerDocument.createElement("tbody") ) :
+		elem;
 }
 
 // Replace/restore the type attribute of script elements for safe DOM manipulation
 function disableScript( elem ) {
-	var attr = elem.getAttributeNode("type");
-	elem.type = ( attr && attr.specified ) + "/" + elem.type;
+	elem.type = (jQuery.find.attr( elem, "type" ) !== null) + "/" + elem.type;
 	return elem;
 }
 function restoreScript( elem ) {
@@ -441,7 +374,7 @@ function cloneCopyEvent( src, dest ) {
 }
 
 function fixCloneNodeIssues( src, dest ) {
-	var nodeName, data, e;
+	var nodeName, e, data;
 
 	// We do not need to do anything for non-Elements
 	if ( dest.nodeType !== 1 ) {
@@ -536,8 +469,8 @@ jQuery.each({
 function getAll( context, tag ) {
 	var elems, elem,
 		i = 0,
-		found = typeof context.getElementsByTagName !== "undefined" ? context.getElementsByTagName( tag || "*" ) :
-			typeof context.querySelectorAll !== "undefined" ? context.querySelectorAll( tag || "*" ) :
+		found = typeof context.getElementsByTagName !== core_strundefined ? context.getElementsByTagName( tag || "*" ) :
+			typeof context.querySelectorAll !== core_strundefined ? context.querySelectorAll( tag || "*" ) :
 			undefined;
 
 	if ( !found ) {
@@ -564,7 +497,7 @@ function fixDefaultChecked( elem ) {
 
 jQuery.extend({
 	clone: function( elem, dataAndEvents, deepDataAndEvents ) {
-		var destElements, srcElements, node, i, clone,
+		var destElements, node, clone, i, srcElements,
 			inPage = jQuery.contains( elem.ownerDocument, elem );
 
 		if ( jQuery.support.html5Clone || jQuery.isXMLDoc(elem) || !rnoshimcache.test( "<" + elem.nodeName + ">" ) ) {
@@ -619,21 +552,21 @@ jQuery.extend({
 	},
 
 	buildFragment: function( elems, context, scripts, selection ) {
-		var elem, j, tmp, tag, wrap, tbody,
-			nodes = [],
-			i = 0,
+		var j, elem, contains,
+			tmp, tag, tbody, wrap,
 			l = elems.length,
-			fragment = context.createDocumentFragment(),
-			safe = context === document && safeFragment;
 
-		// Ensure that context is a document
-		if ( !context || typeof context.createDocumentFragment === "undefined" ) {
-			context = document;
-		}
+			// Ensure a safe fragment
+			safe = createSafeFragment( context ),
+
+			nodes = [],
+			i = 0;
 
 		for ( ; i < l; i++ ) {
 			elem = elems[ i ];
+
 			if ( elem || elem === 0 ) {
+
 				// Add nodes directly
 				if ( jQuery.type( elem ) === "object" ) {
 					jQuery.merge( nodes, elem.nodeType ? [ elem ] : elem );
@@ -644,14 +577,13 @@ jQuery.extend({
 
 				// Convert html into DOM nodes
 				} else {
-					// Ensure a safe container
-					safe = safe || createSafeFragment( context );
 					tmp = tmp || safe.appendChild( context.createElement("div") );
 
 					// Deserialize a standard representation
 					tag = ( rtagName.exec( elem ) || ["", ""] )[1].toLowerCase();
 					wrap = wrapMap[ tag ] || wrapMap._default;
-					tmp.innerHTML = wrap[1] + elem.replace( rxhtmlTag, "<$1></$2>" ) + ( wrap[2] || "" );
+
+					tmp.innerHTML = wrap[1] + elem.replace( rxhtmlTag, "<$1></$2>" ) + wrap[2];
 
 					// Descend through wrappers to the right content
 					j = wrap[0];
@@ -700,7 +632,7 @@ jQuery.extend({
 			}
 		}
 
-		// Fix #11356: Clear elements from safeFragment
+		// Fix #11356: Clear elements from fragment
 		if ( tmp ) {
 			safe.removeChild( tmp );
 		}
@@ -713,18 +645,20 @@ jQuery.extend({
 
 		i = 0;
 		while ( (elem = nodes[ i++ ]) ) {
-			safe = jQuery.contains( elem.ownerDocument, elem );
+
+			// #4087 - If origin and destination elements are the same, and this is
+			// that element, do not do anything
+			if ( selection && jQuery.inArray( elem, selection ) !== -1 ) {
+				continue;
+			}
+
+			contains = jQuery.contains( elem.ownerDocument, elem );
 
 			// Append to fragment
-			// #4087 - If origin and destination elements are the same, and this is
-			// that element, do not append to fragment
-			if ( !selection || jQuery.inArray( elem, selection ) === -1 ) {
-				fragment.appendChild( elem );
-			}
-			tmp = getAll( elem, "script" );
+			tmp = getAll( safe.appendChild( elem ), "script" );
 
 			// Preserve script evaluation history
-			if ( safe ) {
+			if ( contains ) {
 				setGlobalEval( tmp );
 			}
 
@@ -739,13 +673,13 @@ jQuery.extend({
 			}
 		}
 
-		elem = tmp = safe = null;
+		tmp = null;
 
-		return fragment;
+		return safe;
 	},
 
 	cleanData: function( elems, /* internal */ acceptData ) {
-		var data, id, elem, type,
+		var elem, type, id, data,
 			i = 0,
 			internalKey = jQuery.expando,
 			cache = jQuery.cache,
@@ -783,7 +717,7 @@ jQuery.extend({
 						if ( deleteExpando ) {
 							delete elem[ internalKey ];
 
-						} else if ( typeof elem.removeAttribute !== "undefined" ) {
+						} else if ( typeof elem.removeAttribute !== core_strundefined ) {
 							elem.removeAttribute( internalKey );
 
 						} else {
@@ -795,5 +729,16 @@ jQuery.extend({
 				}
 			}
 		}
+	},
+
+	_evalUrl: function( url ) {
+		return jQuery.ajax({
+			url: url,
+			type: "GET",
+			dataType: "script",
+			async: false,
+			global: false,
+			"throws": true
+		});
 	}
 });

@@ -1,13 +1,24 @@
 var
-	// A central reference to the root jQuery(document)
-	rootjQuery,
-
 	// The deferred used on DOM ready
 	readyList,
 
+	// A central reference to the root jQuery(document)
+	rootjQuery,
+
+	// Support: IE<10
+	// For `typeof xmlNode.method` instead of `xmlNode.method !== undefined`
+	core_strundefined = typeof undefined,
+
 	// Use the correct document accordingly with window argument (sandbox)
-	document = window.document,
 	location = window.location,
+	document = window.document,
+	docElem = document.documentElement,
+
+	// Map over jQuery in case of overwrite
+	_jQuery = window.jQuery,
+
+	// Map over the $ in case of overwrite
+	_$ = window.$,
 
 	// [[Class]] -> type pairs
 	class2type = {},
@@ -44,7 +55,7 @@ var
 	// A simple way to check for HTML strings
 	// Prioritize #id over <tag> to avoid XSS via location.hash (#9521)
 	// Strict HTML recognition (#11290: must start with <)
-	rquickExpr = /^(?:(<[\w\W]+>)[^>]*|#([\w-]*))$/,
+	rquickExpr = /^(?:\s*(<[\w\W]+>)[^>]*|#([\w-]*))$/,
 
 	// Match a standalone tag
 	rsingleTag = /^<(\w+)\s*\/?>(?:<\/\1>|)$/,
@@ -64,16 +75,24 @@ var
 		return letter.toUpperCase();
 	},
 
-	// The ready event handler and self cleanup method
-	DOMContentLoaded = function() {
+	// The ready event handler
+	completed = function( event ) {
+
+		// readyState === "complete" is good enough for us to call the dom ready in oldIE
+		if ( document.addEventListener || event.type === "load" || document.readyState === "complete" ) {
+			detach();
+			jQuery.ready();
+		}
+	},
+	// Clean-up method for dom ready events
+	detach = function() {
 		if ( document.addEventListener ) {
-			document.removeEventListener( "DOMContentLoaded", DOMContentLoaded, false );
-			jQuery.ready();
-		} else if ( document.readyState === "complete" ) {
-			// we're here because readyState === "complete" in oldIE
-			// which is good enough for us to call the dom ready!
-			document.detachEvent( "onreadystatechange", DOMContentLoaded );
-			jQuery.ready();
+			document.removeEventListener( "DOMContentLoaded", completed, false );
+			window.removeEventListener( "load", completed, false );
+
+		} else {
+			document.detachEvent( "onreadystatechange", completed );
+			window.detachEvent( "onload", completed );
 		}
 	};
 
@@ -189,11 +208,6 @@ jQuery.fn = jQuery.prototype = {
 	// The default length of a jQuery object is 0
 	length: 0,
 
-	// The number of elements contained in the matched element set
-	size: function() {
-		return this.length;
-	},
-
 	toArray: function() {
 		return core_slice.call( this );
 	},
@@ -278,7 +292,7 @@ jQuery.fn = jQuery.prototype = {
 jQuery.fn.init.prototype = jQuery.fn;
 
 jQuery.extend = jQuery.fn.extend = function() {
-	var options, name, src, copy, copyIsArray, clone,
+	var src, copyIsArray, copy, name, options, clone,
 		target = arguments[0] || {},
 		i = 1,
 		length = arguments.length,
@@ -342,7 +356,11 @@ jQuery.extend = jQuery.fn.extend = function() {
 };
 
 jQuery.extend({
-	noConflict: function( ) {
+	// Unique for each copy of jQuery on the page
+	// Non-digits removed to match rinlinejQuery
+	expando: "jQuery" + ( core_version + Math.random() ).replace( /\D/g, "" ),
+
+	noConflict: function( deep ) {
 		return jQuery;
 	},
 
@@ -404,6 +422,7 @@ jQuery.extend({
 	},
 
 	isWindow: function( obj ) {
+		/* jshint eqeqeq: false */
 		return obj != null && obj == obj.window;
 	},
 
@@ -421,6 +440,8 @@ jQuery.extend({
 	},
 
 	isPlainObject: function( obj ) {
+		var key;
+
 		// Must be an Object.
 		// Because of IE, we also have to check the presence of the constructor property.
 		// Make sure that DOM nodes and window objects don't pass through, as well
@@ -440,10 +461,16 @@ jQuery.extend({
 			return false;
 		}
 
+		// Support: IE<9
+		// Handle iteration over inherited properties before own properties.
+		if ( jQuery.support.ownLast ) {
+			for ( key in obj ) {
+				return core_hasOwn.call( obj, key );
+			}
+		}
+
 		// Own properties are enumerated firstly, so to speed up,
 		// if last one is own, then all properties are own.
-
-		var key;
 		for ( key in obj ) {}
 
 		return key === undefined || core_hasOwn.call( obj, key );
@@ -752,7 +779,7 @@ jQuery.extend({
 	// Bind a function to a context, optionally partially applying any
 	// arguments.
 	proxy: function( fn, context ) {
-		var tmp, args, proxy;
+		var args, proxy, tmp;
 
 		if ( typeof context === "string" ) {
 			tmp = fn[ context ];
@@ -833,6 +860,29 @@ jQuery.extend({
 
 	now: function() {
 		return ( new Date() ).getTime();
+	},
+
+	// A method for quickly swapping in/out CSS properties to get correct calculations.
+	// Note: this method belongs to the css module but it's needed here for the support module.
+	// If support gets modularized, this method should be moved back to the css module.
+	swap: function( elem, options, callback, args ) {
+		var ret, name,
+			old = {};
+
+		// Remember the old values, and insert the new ones
+		for ( name in options ) {
+			old[ name ] = elem.style[ name ];
+			elem.style[ name ] = options[ name ];
+		}
+
+		ret = callback.apply( elem, args || [] );
+
+		// Revert the old values
+		for ( name in options ) {
+			elem.style[ name ] = old[ name ];
+		}
+
+		return ret;
 	}
 });
 
@@ -851,18 +901,18 @@ jQuery.ready.promise = function( obj ) {
 		// Standards-based browsers support DOMContentLoaded
 		} else if ( document.addEventListener ) {
 			// Use the handy event callback
-			document.addEventListener( "DOMContentLoaded", DOMContentLoaded, false );
+			document.addEventListener( "DOMContentLoaded", completed, false );
 
 			// A fallback to window.onload, that will always work
-			window.addEventListener( "load", jQuery.ready, false );
+			window.addEventListener( "load", completed, false );
 
 		// If IE event model is used
 		} else {
 			// Ensure firing before onload, maybe late but safe also for iframes
-			document.attachEvent( "onreadystatechange", DOMContentLoaded );
+			document.attachEvent( "onreadystatechange", completed );
 
 			// A fallback to window.onload, that will always work
-			window.attachEvent( "onload", jQuery.ready );
+			window.attachEvent( "onload", completed );
 
 			// If IE and not a frame
 			// continually check to see if the document is ready
@@ -883,6 +933,9 @@ jQuery.ready.promise = function( obj ) {
 						} catch(e) {
 							return setTimeout( doScrollCheck, 50 );
 						}
+
+						// detach all dom ready events
+						detach();
 
 						// and execute any waiting functions
 						jQuery.ready();
