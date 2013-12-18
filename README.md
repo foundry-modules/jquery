@@ -17,17 +17,9 @@ What you need to build your own jQuery
 In order to build jQuery, you need to have Node.js/npm latest and git 1.7 or later.
 (Earlier versions might work OK, but are not tested.)
 
-Windows users have two options:
+For Windows you have to download and install [git](http://git-scm.com/downloads) and [Node.js](http://nodejs.org/download/).
 
-1. Install [msysgit](https://code.google.com/p/msysgit/) (Full installer for official Git) and a
-   [binary version of Node.js](http://nodejs.org). Make sure all two packages are installed to the same
-   location (by default, this is C:\Program Files\Git).
-2. Install [Cygwin](http://cygwin.com/) (make sure you install the git and which packages), and
-   a [binary version of Node.js](http://nodejs.org/).
-
-Mac OS users should install Xcode (comes on your Mac OS install DVD, or downloadable from
-[Apple's Xcode site](http://developer.apple.com/technologies/xcode.html)) and
-[Homebrew](http://mxcl.github.com/homebrew/). Once Homebrew is installed, run `brew install git` to install git,
+Mac OS users should install [Homebrew](http://mxcl.github.com/homebrew/). Once Homebrew is installed, run `brew install git` to install git,
 and `brew install node` to install Node.js.
 
 Linux/BSD users should use their appropriate package managers to install git and Node.js, or build from source
@@ -37,58 +29,69 @@ if you swing that way. Easy-peasy.
 How to build your own jQuery
 ----------------------------
 
-First, clone a copy of the main jQuery git repo by running:
+Clone a copy of the main jQuery git repo by running:
 
 ```bash
 git clone git://github.com/jquery/jquery.git
 ```
 
-Install the grunt-cli package so that you will have the correct version of grunt available from any project that needs it. This should be done as a global install:
-
+Enter the jquery directory and run the build script:
 ```bash
+cd jquery && npm run-script build
+```
+The built version of jQuery will be put in the `dist/` subdirectory, along with the minified copy and associated map file.
+
+If you want create custom build or help with jQuery development, it would be better to install <a href="https://github.com/gruntjs/grunt-cli">grunt command line interface</a> as a global package:
+
+```
 npm install -g grunt-cli
 ```
-
-Enter the jquery directory and install the Node dependencies, this time *without* specifying a global install:
-
-```bash
-cd jquery && npm install
-```
-
 Make sure you have `grunt` installed by testing:
-
-```bash
-grunt -version
+```
+grunt -v
 ```
 
-Then, to get a complete, minified (w/ Uglify.js), linted (w/ JSHint) version of jQuery, type the following:
-
-```bash
+Now by running `grunt` command, in the jquery directory, you could build full version of jQuery, just like with `npm run-script build` command:
+```
 grunt
 ```
 
-The built version of jQuery will be put in the `dist/` subdirectory, along with the minified copy and associated map file.
-
+There are many other tasks avaliable for jQuery Core:
+```
+grunt -help
+```
 
 ### Modules
 
 Special builds can be created that exclude subsets of jQuery functionality.
 This allows for smaller custom builds when the builder is certain that those parts of jQuery are not being used.
-For example, an app that only used JSONP for `$.ajax()` and did not need to calculate offsets or positions of elements could exclude the offset and ajax/xhr modules. The current modules that can be excluded are:
+For example, an app that only used JSONP for `$.ajax()` and did not need to calculate offsets or positions of elements could exclude the offset and ajax/xhr modules.
+
+Any module may be excluded except for `core`, and `selector`. To exclude a module, pass its path relative to the `src` folder (without the `.js` extension).
+
+Some example modules that can be excluded are:
 
 - **ajax**: All AJAX functionality: `$.ajax()`, `$.get()`, `$.post()`, `$.ajaxSetup()`, `.load()`, transports, and ajax event shorthands such as `.ajaxStart()`.
 - **ajax/xhr**: The XMLHTTPRequest AJAX transport only.
 - **ajax/script**: The `<script>` AJAX transport only; used to retrieve scripts.
 - **ajax/jsonp**: The JSONP AJAX transport only; depends on the ajax/script transport.
-- **css**: The `.css()` method plus non-animated `.show()`, `.hide()` and `.toggle()`.
+- **css**: The `.css()` method plus non-animated `.show()`, `.hide()` and `.toggle()`. Also removes **all** modules depending on css (including **effects**, **dimensions**, and **offset**).
 - **deprecated**: Methods documented as deprecated but not yet removed; currently only `.andSelf()`.
 - **dimensions**: The `.width()` and `.height()` methods, including `inner-` and `outer-` variations.
-- **effects**: The `.animate()` method and its shorthands such as `.slideUp()` or `.hide("slow")`. 
-- **event-alias**: All event attaching/triggering shorthands like `.click()` or `.mouseover()`.
+- **effects**: The `.animate()` method and its shorthands such as `.slideUp()` or `.hide("slow")`.
+- **event**: The `.on()` and `.off()` methods and all event functionality. Also removes `event/alias`.
+- **event/alias**: All event attaching/triggering shorthands like `.click()` or `.mouseover()`.
 - **offset**: The `.offset()`, `.position()`, `.offsetParent()`, `.scrollLeft()`, and `.scrollTop()` methods.
 - **wrap**: The `.wrap()`, `.wrapAll()`, `.wrapInner()`, and `.unwrap()` methods.
+- **exports/amd**: Exclude the AMD definition.
+- **core/ready**: Exclude the ready module if you place your scripts at the end of the body. Any ready callbacks bound with `jQuery()` will simply be called immediately. However, `jQuery(document).ready()` will not be a function and `.on("ready", ...)` or similar will not be triggered.
+- **deferred**: Exclude jQuery.Deferred. This also removes jQuery.Callbacks. *Note* that modules that depend on jQuery.Deferred(AJAX, effects, core/ready) will not be removed and will still expect jQuery.Deferred to be there. Include your own jQuery.Deferred implementation or exclude those modules as well (`grunt custom:-deferred,-ajax,-effects,-core/ready`).
 
-The grunt build process is aware of dependencies across modules. If you explicitly remove a module, its dependent modules will be removed as well. For example, excluding the css module also excludes effects, since the effects module uses `.css()` to animate CSS properties. These dependencies are listed in Gruntfile.js and the build process shows a message for each dependent module it excludes.
+Removing sizzle is not supported on the 1.x branch.
+
+*Note*: Excluding Sizzle will also exclude all jQuery selector extensions (such as `effects/animatedSelector` and `css/hiddenVisibleSelectors`).
+
+The build process shows a message for each dependent module it excludes or includes.
 
 To create a custom build of the latest stable version, first check out the version:
 
@@ -96,10 +99,10 @@ To create a custom build of the latest stable version, first check out the versi
 git pull; git checkout $(git describe --abbrev=0 --tags)
 ```
 
-Then, make sure all Node dependencies are installed and all Git submodules are checked out:
+Then, make sure all Node dependencies are installed:
 
 ```bash
-npm install && grunt
+npm install
 ```
 
 Create the custom build, use the `grunt custom` option, listing the modules to be excluded. Examples:
@@ -110,16 +113,16 @@ Exclude all **ajax** functionality:
 grunt custom:-ajax
 ```
 
-Exclude **css**, **effects**, **offset**, **dimensions**, and **position**. Excluding **css** automatically excludes its dependent modules:
+Excluding **css** removes modules depending on CSS: **effects**, **offset**, **dimensions**.
 
 ```bash
-grunt custom:-css,-position
+grunt custom:-css
 ```
 
-Exclude **all** optional modules:
+Exclude a bunch of modules:
 
 ```bash
-grunt custom:-ajax,-css,-deprecated,-dimensions,-effects,-event-alias,-offset,-wrap
+grunt custom:-ajax,-css,-deprecated,-dimensions,-effects,-event/alias,-offset,-wrap
 ```
 
 For questions or requests regarding custom builds, please start a thread on the [Developing jQuery Core](https://forum.jquery.com/developing-jquery-core) section of the forum. Due to the combinatorics and custom nature of these builds, they are not regularly tested in jQuery's unit test process.
@@ -127,7 +130,13 @@ For questions or requests regarding custom builds, please start a thread on the 
 Running the Unit Tests
 --------------------------------------
 
-Start grunt to auto-build jQuery as you work:
+Make sure you have the necessary dependencies:
+
+```bash
+npm install
+```
+
+Start `grunt watch` or `npm start` to auto-build jQuery as you work:
 
 ```bash
 cd jquery && grunt watch
@@ -172,71 +181,10 @@ Additionally, both methods can be combined.
 
 
 
-Updating Submodules
--------------------
-
-Update the submodules to what is probably the latest upstream code.
-
-```bash
-grunt update_submodules
-```
-
-Note: This task will also be run any time the default `grunt` command is used.
-
-
-
 Essential Git
 -------------
 
 As the source code is handled by the version control system Git, it's useful to know some features used.
-
-### Submodules ###
-
-The repository uses submodules, which normally are handled directly by the `grunt update_submodules` command, but sometimes you want to
-be able to work with them manually.
-
-Following are the steps to manually get the submodules:
-
-```bash
-git clone https://github.com/jquery/jquery.git
-cd jquery
-git submodule init
-git submodule update
-```
-
-Or:
-
-```bash
-git clone https://github.com/jquery/jquery.git
-cd jquery
-git submodule update --init
-```
-
-Or:
-
-```bash
-git clone --recursive https://github.com/jquery/jquery.git
-cd jquery
-```
-
-If you want to work inside a submodule, it is possible, but first you need to checkout a branch:
-
-```bash
-cd src/sizzle
-git checkout master
-```
-
-After you've committed your changes to the submodule, you'll update the jquery project to point to the new commit,
-but remember to push the submodule changes before pushing the new jquery commit:
-
-```bash
-cd src/sizzle
-git push origin master
-cd ..
-git add src/sizzle
-git commit
-```
-
 
 ### cleaning ###
 
@@ -249,7 +197,7 @@ git clean -fdx
 
 ### rebasing ###
 
-For feature/topic branches, you should always used the `--rebase` flag to `git pull`, or if you are usually handling many temporary "to be in a github pull request" branches, run following to automate this:
+For feature/topic branches, you should always use the `--rebase` flag to `git pull`, or if you are usually handling many temporary "to be in a github pull request" branches, run following to automate this:
 
 ```bash
 git config branch.autosetuprebase local
@@ -266,7 +214,7 @@ Following are some commands that can be used there:
 * `Ctrl + Alt + M` - automerge as much as possible
 * `b` - jump to next merge conflict
 * `s` - change the order of the conflicted lines
-* `u` - undo an merge
+* `u` - undo a merge
 * `left mouse button` - mark a block to be the winner
 * `middle mouse button` - mark a line to be the winner
 * `Ctrl + S` - save

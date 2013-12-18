@@ -18,6 +18,8 @@ var releaseVersion,
 	pkg,
 	branch,
 
+	sizzleLoc = "bower_modules/sizzle",
+
 	scpURL = "jqadmin@code.origin.jquery.com:/var/www/html/code.jquery.com/",
 	cdnURL = "http://code.origin.jquery.com/",
 	repoURL = "git@github.com:jquery/jquery.git",
@@ -56,14 +58,16 @@ var releaseVersion,
 steps(
 	initialize,
 	checkGitStatus,
-	tagReleaseVersion,
+	setReleaseVersion,
 	gruntBuild,
 	makeReleaseCopies,
-	setNextVersion,
 	copyTojQueryCDN,
 	buildGoogleCDN,
 	buildMicrosoftCDN,
+	createTag,
+	setNextVersion,
 	pushToGithub,
+	// publishToNpm,
 	exit
 );
 
@@ -77,6 +81,7 @@ function initialize( next ) {
 
 	// First arg should be the version number being released
 	var newver, oldver,
+		exists = fs.existsSync || path.existsSync,
 		rsemver = /^(\d+)\.(\d+)\.(\d+)(?:-([\dA-Za-z\-]+(?:\.[\dA-Za-z\-]+)*))?$/,
 		version = ( process.argv[3] || "" ).toLowerCase().match( rsemver ) || {},
 		major = version[1],
@@ -94,14 +99,17 @@ function initialize( next ) {
 	if ( xbeta === "pre" ) {
 		die( "Cannot release a 'pre' version!" );
 	}
-	if ( !(fs.existsSync || path.existsSync)( "package.json" ) ) {
+	if ( !exists( "package.json" ) ) {
 		die( "No package.json in this directory" );
 	}
-	pkg = JSON.parse( fs.readFileSync( "package.json" ) );
+	if ( !exists( sizzleLoc ) ) {
+		die( "Sizzle expected to exist at " + sizzleLoc );
+	}
+	pkg = readJSON( "package.json" );
 
 	console.log( "Current version is " + pkg.version + "; generating release " + releaseVersion );
 	version = pkg.version.match( rsemver );
-	oldver = ( +version[1] ) * 10000 + ( +version[2] * 100 ) + ( +version[3] )
+	oldver = ( +version[1] ) * 10000 + ( +version[2] * 100 ) + ( +version[3] );
 	newver = ( +major ) * 10000 + ( +minor * 100 ) + ( +patch );
 	if ( newver < oldver ) {
 		die( "Next version is older than current version!" );
@@ -112,13 +120,13 @@ function initialize( next ) {
 }
 
 function checkGitStatus( next ) {
-	git( [ "status" ], function( error, stdout, stderr ) {
+	git( [ "status" ], function( error, stdout ) {
 		var onBranch = ((stdout||"").match( /On branch (\S+)/ ) || [])[1];
 		if ( onBranch !== branch ) {
 			dieIfReal( "Branches don't match: Wanted " + branch + ", got " + onBranch );
 		}
 		if ( /Changes to be committed/i.test( stdout ) ) {
-			dieIfReal( "Please commit changed files before attemping to push a release." );
+			dieIfReal( "Please commit changed files before attempting to push a release." );
 		}
 		if ( /Changes not staged for commit/i.test( stdout ) ) {
 			dieIfReal( "Please stash files before attempting to push a release." );
@@ -127,21 +135,22 @@ function checkGitStatus( next ) {
 	});
 }
 
-function tagReleaseVersion( next ) {
-	updatePackageVersion( releaseVersion );
-	git( [ "commit", "-a", "-m", "Tagging the " + releaseVersion + " release." ], function(){
-		git( [ "tag", releaseVersion ], next, debug);
-	}, debug);
+function setReleaseVersion( next ) {
+	updateVersion( releaseVersion );
+	git( [ "commit", "-a", "-m", "Updating version to " + releaseVersion + "." ], next, debug );
 }
 
 function gruntBuild( next ) {
-	exec( gruntCmd, [], function( error, stdout ) {
-		if ( error ) {
-			die( error + stderr );
-		}
-		console.log( stdout );
-		next();
-	}, false );
+	// First clean the dist directory of anything we're not about to rebuild
+	git( [ "clean", "-dfx", "dist/" ], function() {
+		exec( gruntCmd, [], function( error, stdout, stderr ) {
+			if ( error ) {
+				die( error + stderr );
+			}
+			console.log( stdout );
+			next();
+		}, false );
+	}, debug );
 }
 
 function makeReleaseCopies( next ) {
@@ -164,12 +173,10 @@ function makeReleaseCopies( next ) {
 						"\",\"sources\":[\"" + unpathedFile.replace( /\.min\.map/, ".js" ) + "\"]" );
 				fs.writeFileSync( releaseFile, text );
 			} else if ( /\.min\.js$/.test( releaseFile ) ) {
-				// Minified files point back to the corresponding map;
-				// again assume one big happy directory.
-				// "//@ sourceMappingURL=jquery.min.map"
+				// Remove the source map comment; it causes way too many problems.
+				// Keep the map file in case DevTools allow manual association.
 				text = fs.readFileSync( builtFile, "utf8" )
-					.replace( /\/\/@ sourceMappingURL=\S+/,
-						"//@ sourceMappingURL=" + unpathedFile.replace( /\.js$/, ".map" ) );
+					.replace( /\/\/# sourceMappingURL=\S+/, "" );
 				fs.writeFileSync( releaseFile, text );
 			} else if ( builtFile !== releaseFile ) {
 				copy( builtFile, releaseFile );
@@ -179,11 +186,6 @@ function makeReleaseCopies( next ) {
 		}
 	});
 	next();
-}
-
-function setNextVersion( next ) {
-	updatePackageVersion( nextVersion );
-	git( [ "commit", "-a", "-m", "Updating the source version to " + nextVersion ], next, debug );
 }
 
 function copyTojQueryCDN( next ) {
@@ -210,30 +212,129 @@ function buildMicrosoftCDN( next ) {
 	makeArchive( "mscdn", msFilesCDN, next );
 }
 
+function createTag( next ) {
+	steps(
+		checkoutCommit,
+		commitDistFiles,
+		tagRelease,
+		checkoutBranch,
+		next
+	);
+}
+
+function setNextVersion( next ) {
+	updateVersion( nextVersion );
+	git( [ "commit", "-a", "-m", "Updating the source version to " + nextVersion + "✓™" ], next, debug );
+}
+
 function pushToGithub( next ) {
 	git( [ "push", "--tags", repoURL, branch ], next, debug || skipRemote );
 }
 
-//==============================
-
+/* Utilities
+---------------------------------------------------------------------- */
 function steps() {
 	var cur = 0,
-		steps = arguments;
+		st = arguments;
 	(function next(){
 		process.nextTick(function(){
-			steps[ cur++ ]( next );
+			st[ cur++ ]( next );
 		});
 	})();
 }
 
-function updatePackageVersion( ver ) {
-	console.log( "Updating package.json version to " + ver );
+function readJSON( filename ) {
+	return JSON.parse( fs.readFileSync( filename ) );
+}
+
+function replaceVersionJSON( file, version ) {
+	var text = fs.readFileSync( file, "utf8" );
+	text = text.replace( /("version":\s*")[^"]+/, "$1" + version );
+	fs.writeFileSync( file, text );
+}
+
+function updateVersion( ver ) {
+	console.log( "Updating version to " + ver );
 	pkg.version = ver;
 	if ( !debug ) {
-		fs.writeFileSync( "package.json", JSON.stringify( pkg, null, "\t" ) + "\n" );
+		[ "package.json", "bower.json" ].forEach(function( filename ) {
+			replaceVersionJSON( filename, ver );
+		});
 	}
 }
 
+function copy( oldFile, newFile, skip ) {
+	console.log( "Copying " + oldFile + " to " + newFile );
+	if ( !skip ) {
+		fs.writeFileSync( newFile, fs.readFileSync( oldFile, "utf8" ) );
+	}
+}
+
+function exec( cmd, args, fn, skip ) {
+	if ( skip ) {
+		console.log( "# " + cmd + " " + args.join(" ") );
+		fn( "", "", "" );
+	} else {
+		console.log( cmd + " " + args.join(" ") );
+		child.execFile( cmd, args, { env: process.env },
+			function( err, stdout, stderr ) {
+				if ( err ) {
+					die( stderr || stdout || err );
+				}
+				fn.apply( this, arguments );
+			}
+		);
+	}
+}
+
+function git( args, fn, skip ) {
+	exec( "git", args, fn, skip );
+}
+
+
+/* Tag creation
+---------------------------------------------------------------------- */
+function checkoutCommit( next ) {
+	git( [ "checkout", "HEAD^0" ], next, debug );
+}
+
+function commitDistFiles( next ) {
+	// Remove scripts property from package.json
+	// Building and bower are irrelevant as those files will be committed
+	// Makes for a clean npm install
+	var pkgClone = readJSON( "package.json" );
+	delete pkgClone.scripts;
+	fs.writeFileSync( "package.json", JSON.stringify( pkgClone, null, "\t" ) );
+	// Add files to be committed
+	git( [ "add", "package.json" ], function() {
+		git( [ "commit", "-m", "Remove scripts property from package.json" ], function() {
+			// Add sizzle in a separate commit to avoid a big diff
+			// Use force to add normally ignored files
+			git( [ "add", "-f", sizzleLoc ], function() {
+				git( [ "commit", "-m", "Add sizzle" ], function() {
+					// Add jquery files for distribution in a final commit
+					git( [ "add", "-f", devFile, minFile, mapFile ], function() {
+						git( [ "commit", "-m", releaseVersion ], next, debug );
+					}, debug );
+				}, debug );
+			}, debug );
+		}, debug );
+	}, debug );
+}
+
+function tagRelease( next ) {
+	git( [ "tag", releaseVersion ], next, debug );
+}
+
+function checkoutBranch( next ) {
+	// Reset files to previous state before leaving the commit
+	git( [ "reset", "--hard", "HEAD" ], function() {
+		git( [ "checkout", branch ], next, debug );
+	}, debug );
+}
+
+/* Archive creation
+---------------------------------------------------------------------- */
 function makeArchive( cdn, files, fn ) {
 	if ( isBeta ) {
 		console.log( "Skipping archive creation for " + cdn + "; " + releaseVersion + " is beta" );
@@ -258,7 +359,7 @@ function makeArchive( cdn, files, fn ) {
 		return "dist/" + item.replace( /VER/g, releaseVersion );
 	});
 
-	exec( "md5sum", files, function( err, stdout, stderr ) {
+	exec( "md5sum", files, function( err, stdout ) {
 		fs.writeFileSync( md5file, stdout );
 		files.push( md5file );
 
@@ -270,32 +371,38 @@ function makeArchive( cdn, files, fn ) {
 	}, false );
 }
 
-function copy( oldFile, newFile, skip ) {
-	console.log( "Copying " + oldFile + " to " + newFile );
-	if ( !skip ) {
-		fs.writeFileSync( newFile, fs.readFileSync( oldFile, "utf8" ) );
+/* NPM
+---------------------------------------------------------------------- */
+/*
+function publishToNpm( next ) {
+	// Only publish the master branch to NPM
+	// You must be the jquery npm user for this not to fail
+	// To check, run `npm whoami`
+	// Log in to the jquery user with `npm adduser`
+	if ( branch !== "master" ) {
+		next();
+		return;
 	}
-}
-
-function git( args, fn, skip ) {
-	exec( "git", args, fn, skip );
-}
-
-function exec( cmd, args, fn, skip ) {
-	if ( skip ) {
-		console.log( "# " + cmd + " " + args.join(" ") );
-		fn( "", "", "" );
-	} else {
-		console.log( cmd + " " + args.join(" ") );
-		child.execFile( cmd, args, { env: process.env },
-			function( err, stdout, stderr ) {
-				if ( err ) {
-					die( stderr || stdout || err );
-				}
-				fn.apply( this, arguments );
+	git( [ "checkout", releaseVersion ], function() {
+		// Only publish committed files
+		git( [ "clean", "-dfx" ], function() {
+			var args = [ "publish" ];
+			// Tag the version as beta if necessary
+			if ( isBeta ) {
+				args.push( "--tag", "beta" );
 			}
-		);
-	}
+			exec( "npm", args, function() {
+				git( [ "checkout", branch ], next, debug );
+			}, debug || skipRemote );
+		}, debug );
+	}, debug);
+}*/
+
+/* Death
+---------------------------------------------------------------------- */
+function die( msg ) {
+	console.error( "ERROR: " + msg );
+	process.exit( 1 );
 }
 
 function dieIfReal( msg ) {
@@ -304,11 +411,6 @@ function dieIfReal( msg ) {
 	} else {
 		die( msg );
 	}
-}
-
-function die( msg ) {
-	console.error( "ERROR: " + msg );
-	process.exit( 1 );
 }
 
 function exit() {

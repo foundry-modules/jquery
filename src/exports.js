@@ -16,7 +16,7 @@ jQuery.run = function(command) {
 jQuery.initialize = function(options) {
 
 	if (jQuery.initialized) return;
-	
+
 	jQuery.extend(jQuery, options);
 
 	if (jQuery.environment=="development") {

@@ -6,7 +6,7 @@ test("expando", function(){
 	equal(jQuery.expando !== undefined, true, "jQuery is exposing the expando");
 });
 
-function dataTests (elem) {
+function dataTests( elem ) {
 	var dataObj, internalDataObj;
 
 	equal( jQuery.data(elem, "foo"), undefined, "No data exists initially" );
@@ -73,30 +73,30 @@ function dataTests (elem) {
 test("jQuery.data(div)", 25, function() {
 	var div = document.createElement("div");
 
-	dataTests(div);
+	dataTests( div );
 
 	// We stored one key in the private data
 	// assert that nothing else was put in there, and that that
 	// one stayed there.
-	QUnit.expectJqData(div, "foo");
+	QUnit.expectJqData( div, "foo" );
 });
 
 test("jQuery.data({})", 25, function() {
-	dataTests({});
+	dataTests( {} );
 });
 
 test("jQuery.data(window)", 25, function() {
 	// remove bound handlers from window object to stop potential false positives caused by fix for #5280 in
 	// transports/xhr.js
-	jQuery(window).off("unload");
+	jQuery( window ).off( "unload" );
 
-	dataTests(window);
+	dataTests( window );
 });
 
 test("jQuery.data(document)", 25, function() {
-	dataTests(document);
+	dataTests( document );
 
-	QUnit.expectJqData(document, "foo");
+	QUnit.expectJqData( document, "foo" );
 });
 
 test("Expando cleanup", 4, function() {
@@ -142,26 +142,37 @@ test("Data is not being set on comment and text nodes", function() {
 });
 
 test("jQuery.acceptData", function() {
-	expect(9);
+	expect( 11 );
 
 	var flash, applet;
 
 	ok( jQuery.acceptData( document ), "document" );
 	ok( jQuery.acceptData( document.documentElement ), "documentElement" );
 	ok( jQuery.acceptData( {} ), "object" );
-	ok( !jQuery.acceptData( document.createElement("embed") ), "embed" );
-	ok( !jQuery.acceptData( document.createElement("applet") ), "applet" );
+	ok( !jQuery.acceptData( document.createElement( "embed" ) ), "embed" );
+	ok( !jQuery.acceptData( document.createElement( "applet" ) ), "applet" );
 
-	flash = document.createElement("object");
-	flash.setAttribute("classid", "clsid:D27CDB6E-AE6D-11cf-96B8-444553540000");
+	flash = document.createElement( "object" );
+	flash.setAttribute( "classid", "clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" );
 	ok( jQuery.acceptData( flash ), "flash" );
 
-	applet = document.createElement("object");
-	applet.setAttribute("classid", "clsid:8AD9C840-044E-11D1-B3E9-00805F499D93");
+	applet = document.createElement( "object" );
+	applet.setAttribute( "classid", "clsid:8AD9C840-044E-11D1-B3E9-00805F499D93" );
 	ok( !jQuery.acceptData( applet ), "applet" );
 
-	ok( !jQuery.acceptData( document.createComment("") ), "comment" );
-	ok( !jQuery.acceptData( document.createTextNode("") ), "text" );
+	ok( !jQuery.acceptData( document.createComment( "" ) ), "comment" );
+	ok( !jQuery.acceptData( document.createTextNode( "" ) ), "text" );
+	ok( !jQuery.acceptData( document.createDocumentFragment() ), "documentFragment" );
+
+	ok( jQuery.acceptData(
+		jQuery( "#form" ).append( "<input id='nodeType'/><input id='nodeName'/>" )[ 0 ] ),
+		"form with aliased DOM properties" );
+});
+
+// attempting to access the data of an undefined jQuery element should be undefined
+test("jQuery().data() === undefined (#14101)", 2, function() {
+	strictEqual(jQuery().data(), undefined);
+	strictEqual(jQuery().data("key"), undefined);
 });
 
 test(".data()", function() {
@@ -239,9 +250,11 @@ test("jQuery(plain Object).data(String, Object).data(String)", function() {
 });
 
 test("data-* attributes", function() {
-	expect(40);
+	expect( 43 );
+
 	var prop, i, l, metadata, elem,
 		obj, obj2, check, num, num2,
+		parseJSON = jQuery.parseJSON,
 		div = jQuery("<div>"),
 		child = jQuery("<div data-myobj='old data' data-ignored=\"DOM\" data-other='test'></div>"),
 		dummy = jQuery("<div data-myobj='old data' data-ignored=\"DOM\" data-other='test'></div>");
@@ -297,6 +310,13 @@ test("data-* attributes", function() {
 
 	equal( child.data("other"), "test", "Make sure value was pulled in properly from a .data()." );
 
+	// attribute parsing
+	i = 0;
+	jQuery.parseJSON = function() {
+		i++;
+		return parseJSON.apply( this, arguments );
+	};
+
 	child
 		.attr("data-true", "true")
 		.attr("data-false", "false")
@@ -310,6 +330,8 @@ test("data-* attributes", function() {
 		.attr("data-bigassnum", "123456789123456789123456789")
 		.attr("data-badjson", "{123}")
 		.attr("data-badjson2", "[abc]")
+		.attr("data-notjson", " {}")
+		.attr("data-notjson2", "[] ")
 		.attr("data-empty", "")
 		.attr("data-space", " ")
 		.attr("data-null", "null")
@@ -317,21 +339,33 @@ test("data-* attributes", function() {
 
 	strictEqual( child.data("true"), true, "Primitive true read from attribute");
 	strictEqual( child.data("false"), false, "Primitive false read from attribute");
-	strictEqual( child.data("five"), 5, "Primitive number read from attribute");
-	strictEqual( child.data("point"), 5.5, "Primitive number read from attribute");
-	strictEqual( child.data("pointe"), "5.5E3", "Floating point exponential number read from attribute");
-	strictEqual( child.data("grande"), "5.574E9", "Big exponential number read from attribute");
-	strictEqual( child.data("hexadecimal"), "0x42", "Hexadecimal number read from attribute");
-	strictEqual( child.data("pointbad"), "5..5", "Bad number read from attribute");
-	strictEqual( child.data("pointbad2"), "-.", "Bad number read from attribute");
-	strictEqual( child.data("bigassnum"), "123456789123456789123456789", "Bad bigass number read from attribute");
-	strictEqual( child.data("badjson"), "{123}", "Bad number read from attribute");
-	strictEqual( child.data("badjson2"), "[abc]", "Bad number read from attribute");
+	strictEqual( child.data("five"), 5, "Integer read from attribute");
+	strictEqual( child.data("point"), 5.5, "Floating-point number read from attribute");
+	strictEqual( child.data("pointe"), "5.5E3",
+		"Exponential-notation number read from attribute as string");
+	strictEqual( child.data("grande"), "5.574E9",
+		"Big exponential-notation number read from attribute as string");
+	strictEqual( child.data("hexadecimal"), "0x42",
+		"Hexadecimal number read from attribute as string");
+	strictEqual( child.data("pointbad"), "5..5",
+		"Extra-point non-number read from attribute as string");
+	strictEqual( child.data("pointbad2"), "-.",
+		"No-digit non-number read from attribute as string");
+	strictEqual( child.data("bigassnum"), "123456789123456789123456789",
+		"Bad bigass number read from attribute as string");
+	strictEqual( child.data("badjson"), "{123}", "Bad JSON object read from attribute as string");
+	strictEqual( child.data("badjson2"), "[abc]", "Bad JSON array read from attribute as string");
+	strictEqual( child.data("notjson"), " {}",
+		"JSON object with leading non-JSON read from attribute as string");
+	strictEqual( child.data("notjson2"), "[] ",
+		"JSON array with trailing non-JSON read from attribute as string");
 	strictEqual( child.data("empty"), "", "Empty string read from attribute");
-	strictEqual( child.data("space"), " ", "Empty string read from attribute");
+	strictEqual( child.data("space"), " ", "Whitespace string read from attribute");
 	strictEqual( child.data("null"), null, "Primitive null read from attribute");
 	strictEqual( child.data("string"), "test", "Typical string read from attribute");
+	equal( i, 2, "Correct number of JSON parse attempts when reading from attributes" );
 
+	jQuery.parseJSON = parseJSON;
 	child.remove();
 
 	// tests from metadata plugin

@@ -135,13 +135,17 @@ test("show(Number) - other displays", function() {
 		num = 0;
 	jQuery("#test-table").remove();
 
+	// Note: inline elements are expected to be inline-block
+	// because we're showing width/height
+	// Can't animate width/height inline
+	// See #14344
 	test = {
 		"div"      : "block",
 		"p"        : "block",
-		"a"        : "inline",
-		"code"     : "inline",
+		"a"        : "inline-block",
+		"code"     : "inline-block",
 		"pre"      : "block",
-		"span"     : "inline",
+		"span"     : "inline-block",
 		"table"    : old ? "block" : "table",
 		"thead"    : old ? "block" : "table-header-group",
 		"tbody"    : old ? "block" : "table-row-group",
@@ -1078,7 +1082,7 @@ jQuery.each({
 
 asyncTest("Effects chaining", function() {
 	var remaining = 16,
-		shrinkwrap = jQuery.support.shrinkWrapBlocks,
+		shrinkwrap = jQuery.support.shrinkWrapBlocks(),
 		props = [ "opacity", "height", "width", "display", "overflow" ],
 		setup = function( name, selector, hiddenOverflow ) {
 			var $el = jQuery( selector );
@@ -1445,42 +1449,62 @@ test("Do not append px to 'fill-opacity' #9548", 1, function() {
 	});
 });
 
-test("line-height animates correctly (#13855)", function() {
-	expect( 12 );
-	stop();
-
-	var
+asyncTest("line-height animates correctly (#13855)", 12, function() {
+	var t0,
+		longDuration = 2000,
+		shortDuration = 500,
 		animated = jQuery(
-			"<p style='line-height: 4;'>unitless</p>" +
-			"<p style='line-height: 50px;'>px</p>" +
-			"<p style='line-height: 420%;'>percent</p>" +
-			"<p style='line-height: 2.5em;'>em</p>"
+			"<p style='line-height: 100;'>unitless</p>" +
+			"<p style='line-height: 5000px;'>px</p>" +
+			"<p style='line-height: 5000%;'>percent</p>" +
+			"<p style='line-height: 100em;'>em</p>"
 		).appendTo("#qunit-fixture"),
 		initialHeight = jQuery.map( animated, function( el ) {
 			return jQuery( el ).height();
-		});
+		}),
+		tolerance = 1.5;
 
-	animated.animate( { "line-height": "hide" }, 1500 );
+	// Delay start to improve test stability
 	setTimeout(function() {
-		animated.each(function( i ) {
-			var label = jQuery.text( this ),
-				initial = initialHeight[ i ],
-				height = jQuery( this ).height();
-			ok( height < initial, "hide " + label + ": upper bound" );
-			ok( height > initial / 2, "hide " + label + ": lower bound" );
-		});
-		animated.stop( true, true ).hide().animate( { "line-height": "show" }, 1500 );
+
+		t0 = +(new Date());
+		animated.animate( { "line-height": "hide" }, longDuration, "linear" );
+
 		setTimeout(function() {
+			var progress = ( (new Date()) - t0 ) / longDuration;
+
 			animated.each(function( i ) {
 				var label = jQuery.text( this ),
 					initial = initialHeight[ i ],
-					height = jQuery( this ).height();
-				ok( height < initial / 2, "show " + label + ": upper bound" );
+					height = jQuery( this ).height(),
+					lower = initial * ( 1 - progress ) / tolerance;
+				ok( height < initial, "hide " + label + ": upper bound; " +
+					height + " < " + initial + " @ " + ( progress * 100 ) + "%" );
+				ok( height > lower, "hide " + label + ": lower bound; "  +
+					height + " > " + lower + " @ " + ( progress * 100 ) + "%" );
 			});
-			animated.stop( true, true );
-			start();
-		}, 400 );
-	}, 400 );
+
+			t0 = +(new Date());
+			animated.stop( true, true ).hide()
+					.animate( { "line-height": "show" }, longDuration, "linear" );
+
+			setTimeout(function() {
+				var progress = ( (new Date()) - t0 ) / longDuration;
+
+				animated.each(function( i ) {
+					var label = jQuery.text( this ),
+						initial = initialHeight[ i ],
+						height = jQuery( this ).height(),
+						upper = initial * progress * tolerance;
+					ok( height < upper, "show " + label + ": upper bound; " +
+						height + " < " + upper + " @ " + ( progress * 100 ) + "%" );
+				});
+
+				animated.stop( true, true );
+				start();
+			}, shortDuration );
+		}, shortDuration );
+	}, 50 );
 });
 
 // Start 1.8 Animation tests
@@ -2180,7 +2204,8 @@ asyncTest( ".finish() is applied correctly when multiple elements were animated 
 });
 
 asyncTest( "slideDown() after stop() (#13483)", 2, function() {
-	var ul = jQuery( "<ul style='height: 100px;display: block'></ul>" ),
+	var ul = jQuery( "<ul style='height: 100px; display: block;'></ul>" )
+			.appendTo("#qunit-fixture"),
 		origHeight = ul.height();
 
 	// First test. slideUp() -> stop() in the middle -> slideDown() until the end
@@ -2209,24 +2234,28 @@ asyncTest( "slideDown() after stop() (#13483)", 2, function() {
 	}, 500 );
 });
 
-asyncTest( "fadeIn() after stop() (related to #13483)", 2, function() {
-	var ul = jQuery( "<ul style='height: 100px;display: block; opacity: 1'></ul>" ),
+asyncTest( "fadeIn() after stop() (related to #13483)", 5, function() {
+	var ul = jQuery( "<ul style='height: 100px; display: block;'></ul>" )
+			.appendTo("#qunit-fixture").css( "opacity", 1 ),
 		origOpacity = ul.css( "opacity" );
 
 	// First test. fadeOut() -> stop() in the middle -> fadeIn() until the end
-	ul.fadeOut( 1000 );
+	ul.fadeOut( 2000 );
 	setTimeout( function() {
 		ul.stop( true );
+		ok( ul.css( "opacity" ) > 0, "fadeOut() interrupted" );
 		ul.fadeIn( 1, function() {
-			equal( ul.css( "opacity" ), origOpacity, "fadeIn() after interrupting fadeOut() with stop(). Opacity must be in original value" );
+			equal( ul.css( "opacity" ), origOpacity, "fadeIn() restored original opacity after interrupted fadeOut()" );
 
 			// Second test. fadeIn() -> stop() in the middle -> fadeIn() until the end
 			ul.fadeOut( 1, function() {
-				ul.fadeIn( 1000 );
+				equal( ul.css( "opacity" ), origOpacity, "fadeOut() completed" );
+				ul.fadeIn( 2000 );
 				setTimeout( function() {
 					ul.stop( true );
+					ok( ul.css( "opacity" ) < origOpacity, "fadeIn() interrupted" );
 					ul.fadeIn( 1, function() {
-						equal( ul.css("opacity"), origOpacity, "fadeIn() after interrupting fadeIn() with stop(). Opacity must be in original value" );
+						equal( ul.css("opacity"), origOpacity, "fadeIn() restored original opacity after interrupted fadeIn()" );
 
 						// Cleanup
 						ul.remove();

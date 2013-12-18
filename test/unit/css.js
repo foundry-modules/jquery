@@ -3,7 +3,7 @@ if ( jQuery.css ) {
 module("css", { teardown: moduleTeardown });
 
 test("css(String|Hash)", function() {
-	expect( 41 );
+	expect( 43 );
 
 	equal( jQuery("#qunit-fixture").css("display"), "block", "Check for css property \"display\"" );
 
@@ -13,7 +13,7 @@ test("css(String|Hash)", function() {
 	notEqual( $child.css("width"), "20px", "Retrieving a width percentage on the child of a hidden div returns percentage" );
 	notEqual( $child.css("height"), "20px", "Retrieving a height percentage on the child of a hidden div returns percentage" );
 
-	div = jQuery( "<div>" );
+	div = jQuery( "<div/>" );
 
 	// These should be "auto" (or some better value)
 	// temporarily provide "0px" for backwards compat
@@ -42,7 +42,7 @@ test("css(String|Hash)", function() {
 	equal( parseFloat(jQuery("#nothiddendiv").css("width")), 0, "Test negative width set to 0");
 	equal( parseFloat(jQuery("#nothiddendiv").css("height")), 0, "Test negative height set to 0");
 
-	equal( jQuery("<div style='display: none;'>").css("display"), "none", "Styles on disconnected nodes");
+	equal( jQuery("<div style='display: none;'/>").css("display"), "none", "Styles on disconnected nodes");
 
 	jQuery("#floatTest").css({"float": "right"});
 	equal( jQuery("#floatTest").css("float"), "right", "Modified CSS float using \"float\": Assert float is right");
@@ -111,10 +111,15 @@ test("css(String|Hash)", function() {
 	// Test null
 	child.css("font-size", null);
 	equal( child[0].style.fontSize, old, "Make sure font-size isn't changed on null." );
+
+	strictEqual( child.css( "x-fake" ), undefined, "Make sure undefined is returned from css(nonexistent)." );
+
+	div = jQuery( "<div/>" ).css({ position: "absolute", "z-index": 1000 }).appendTo( "#qunit-fixture" );
+	strictEqual( div.css( "z-index" ), "1000",
+		"Make sure that a string z-index is returned from css('z-index') (#14432)." );
 });
 
-test("css() explicit and relative values", function() {
-	expect( 30 );
+test( "css() explicit and relative values", 29, function() {
 	var $elem = jQuery("#nothiddendiv");
 
 	$elem.css({ "width": 1, "height": 1, "paddingLeft": "1px", "opacity": 1 });
@@ -199,9 +204,6 @@ test("css() explicit and relative values", function() {
 
 	$elem.css( "opacity", "+=0.5" );
 	equal( $elem.css("opacity"), "1", "'+=0.5' on opacity (params)" );
-
-	$elem.css( "order", 2 );
-	equal( $elem.css("order"), "2", "2 on order" );
 });
 
 test("css(String, Object)", function() {
@@ -587,21 +589,31 @@ test( "show() resolves correct default display for detached nodes", function(){
 	span.remove();
 });
 
-test("show() resolves correct default display #10227", function() {
-	expect(2);
+test("show() resolves correct default display #10227", 4, function() {
+	var htmlDisplay,
+		html = jQuery( document.documentElement ),
+		body = jQuery( "body" );
 
-	var body = jQuery("body");
-	body.append(
-		"<p id='ddisplay'>a<style>body{display:none}</style></p>"
-	);
+	body.append( "<p class='ddisplay'>a<style>body{display:none}</style></p>" );
 
-	equal( body.css("display"), "none", "Initial display: none" );
+	equal( body.css("display"), "none", "Initial display for body element: none" );
 
 	body.show();
-	equal( body.css("display"), "block", "Correct display: block" );
+	equal( body.css("display"), "block", "Correct display for body element: block" );
 
-	jQuery("#ddisplay").remove();
-	QUnit.expectJqData( body[0], "olddisplay" );
+	body.append( "<p class='ddisplay'>a<style>html{display:none}</style></p>" );
+
+	equal( html.css("display"), "none", "Initial display for html element: none" );
+
+	html.show();
+	htmlDisplay = html.css( "display" );
+
+	// Check for "inline" value needed for older browsers
+	ok( "inline" === htmlDisplay || "block" === htmlDisplay, "Correct display for html element" );
+
+	jQuery._removeData( body[ 0 ] );
+	jQuery._removeData( html[ 0 ] );
+	jQuery( ".ddisplay" ).remove();
 });
 
 test("show() resolves correct default display when iframe display:none #12904", function() {
@@ -840,6 +852,14 @@ test("css('width') and css('height') should respect box-sizing, see #11004", fun
 	equal( el_dis.css("height"), el_dis.css("height", el_dis.css("height")).css("height"), "css('height') is not respecting box-sizing for disconnected element, see #11004");
 });
 
+testIframeWithCallback( "css('width') should work correctly before document ready (#14084)",
+	"css/cssWidthBeforeDocReady.html",
+	function( cssWidthBeforeDocReady ) {
+		expect( 1 );
+		strictEqual( cssWidthBeforeDocReady, "100px", "elem.css('width') works correctly before document ready" );
+	}
+);
+
 test("certain css values of 'normal' should be convertable to a number, see #8627", function() {
 	expect ( 2 );
 
@@ -950,6 +970,12 @@ test( ":visible/:hidden selectors", function() {
 	t( "Is Hidden", "#form input:hidden", ["hidden1","hidden2"] );
 });
 
+test( "Override !important when changing styles (#14394)", function() {
+	expect( 1 );
+	var el = jQuery( "<div style='display: block !important;'></div>" ).css( "display", "none" );
+	equal( el.css( "display" ), "none", "New style replaced !important" );
+});
+
 asyncTest( "Clearing a Cloned Element's Style Shouldn't Clear the Original Element's Style (#8908)", 24, function() {
 	var baseUrl = document.location.href.replace( /([^\/]*)$/, "" ),
 	styles = [{
@@ -1053,4 +1079,21 @@ asyncTest( "Make sure initialized display value for disconnected nodes is correc
 	jQuery._removeData( jQuery("#display")[ 0 ] );
 });
 
+// Support: IE < 11, Safari < 7
+// We have to jump through the hoops here in order to test work with "order" CSS property,
+// that some browsers do not support. This test is not, strictly speaking, correct,
+// but it's the best that we can do.
+(function() {
+	var style = document.createElement( "div" ).style,
+		exist = "order" in style || "WebkitOrder" in style;
+
+	if ( exist ) {
+		test( "Don't append px to CSS \"order\" value (#14049)", 1, function() {
+			var $elem = jQuery( "<div/>" );
+
+			$elem.css( "order", 2 );
+			equal( $elem.css( "order" ), "2", "2 on order" );
+		});
+	}
+})();
 }

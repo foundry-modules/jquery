@@ -64,9 +64,9 @@ test( "text(undefined)", function() {
 
 function testText( valueObj ) {
 
-	expect( 4 );
+	expect( 7 );
 
-	var val, j;
+	var val, j, expected, $multipleElements, $parentDiv, $childDiv;
 
 	val = valueObj("<div><b>Hello</b> cruel world!</div>");
 	equal( jQuery("#foo").text(val)[ 0 ].innerHTML.replace(/>/g, "&gt;"), "&lt;div&gt;&lt;b&gt;Hello&lt;/b&gt; cruel world!&lt;/div&gt;", "Check escaped text" );
@@ -79,6 +79,24 @@ function testText( valueObj ) {
 
 	// Blackberry 4.6 doesn't maintain comments in the DOM
 	equal( jQuery("#nonnodes")[ 0 ].childNodes.length < 3 ? 8 : j[ 2 ].nodeType, 8, "Check node,textnode,comment with text()" );
+
+	// Update multiple elements #11809
+	expected = "New";
+
+	$multipleElements = jQuery( "<div>Hello</div>" ).add( "<div>World</div>" );
+	$multipleElements.text( expected );
+
+	equal( $multipleElements.eq(0).text(), expected, "text() updates multiple elements (#11809)" );
+	equal( $multipleElements.eq(1).text(), expected, "text() updates multiple elements (#11809)" );
+
+	// Prevent memory leaks #11809
+	$childDiv = jQuery( "<div/>" );
+	$childDiv.data("leak", true);
+	$parentDiv = jQuery( "<div/>" );
+	$parentDiv.append( $childDiv );
+	$parentDiv.text("Dry off");
+	
+	equal( $childDiv.data("leak"), undefined, "Check for leaks (#11809)" );
 }
 
 test( "text(String)", function() {
@@ -1051,20 +1069,21 @@ test( "replaceWith(string) for more than one element", function() {
 	equal(jQuery("#foo p").length, 0, "verify that all the three original element have been replaced");
 });
 
-test( "empty replaceWith (#13401; #13596)", 4, function() {
-	expect( 6 );
-
-	var $el = jQuery("<div/>"),
+test( "Empty replaceWith (#13401; #13596)", 8, function() {
+	var $el = jQuery( "<div/>" ),
 		tests = {
 			"empty string": "",
 			"empty array": [],
-			"empty collection": jQuery("#nonexistent")
+			"empty collection": jQuery( "#nonexistent" ),
+
+			 // in case of jQuery(...).replaceWith();
+			"empty undefined": undefined
 		};
 
 	jQuery.each( tests, function( label, input ) {
-		$el.html("<a/>").children().replaceWith( input );
+		$el.html( "<a/>" ).children().replaceWith( input );
 		strictEqual( $el.html(), "", "replaceWith(" + label + ")" );
-		$el.html("<b/>").children().replaceWith(function() { return input; });
+		$el.html( "<b/>" ).children().replaceWith(function() { return input; });
 		strictEqual( $el.html(), "", "replaceWith(function returning " + label + ")" );
 	});
 });
@@ -1681,11 +1700,11 @@ test("empty()", function() {
 	equal( j.html(), "", "Check node,textnode,comment empty works" );
 
 	// Ensure oldIE empties selects (#12336)
-	notEqual( $("#select1").find("option").length, 0, "Have some initial options" );
-	$("#select1").empty();
-	equal( $("#select1").find("option").length, 0, "No more option elements found" );
-	equal( $("#select1")[0].options.length, 0, "options.length cleared as well" );
-	});
+	notEqual( jQuery("#select1").find("option").length, 0, "Have some initial options" );
+	jQuery("#select1").empty();
+	equal( jQuery("#select1").find("option").length, 0, "No more option elements found" );
+	equal( jQuery("#select1")[0].options.length, 0, "options.length cleared as well" );
+});
 
 test( "jQuery.cleanData", function() {
 
