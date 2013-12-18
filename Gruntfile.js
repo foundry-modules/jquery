@@ -138,7 +138,7 @@ module.exports = function( grunt ) {
 	grunt.loadTasks( "build/tasks" );
 
 	// Short list as a high frequency watch task
-	grunt.registerTask( "dev", [ "build:*:*", "jshint", "jscs" ] );
+	grunt.registerTask( "dev", [ "build:*:*" ] );
 
 	// Default grunt
 	grunt.registerTask( "default", [ "jsonlint", "dev", "uglify", "dist:*", "compare_size" ] );
