@@ -4,7 +4,7 @@ include ../../build/modules.mk
 
 MODULE = jquery
 SOURCE_SCRIPT_FOLDER = dist
-SOURCE_SCRIPT_FILE_PREFIX = 
+SOURCE_SCRIPT_FILE_PREFIX =
 
 submoduleclean: clean
 	@@echo "Removing submodules"
@@ -30,4 +30,4 @@ pull_submodules:
 .PHONY: all submoduleclean update_submodules pull_submodules build
 
 build:
-	grunt --force
+	npm run-script build
