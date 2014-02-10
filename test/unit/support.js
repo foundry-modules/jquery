@@ -156,6 +156,43 @@ testIframeWithCallback( "Check CSP (https://developer.mozilla.org/en-US/docs/Sec
 			"submitBubbles": true,
 			"tbody": true
 		};
+	} else if ( /trident\/7\.0/i.test( userAgent ) ) {
+		expected = {
+			"ajax": true,
+			"appendChecked": true,
+			"boxSizing": true,
+			"boxSizingReliable": false,
+			"changeBubbles": true,
+			"checkClone": true,
+			"checkOn": true,
+			"clearCloneStyle": false,
+			"cors": true,
+			"cssFloat": true,
+			"deleteExpando": true,
+			"enctype": true,
+			"focusinBubbles": true,
+			"getSetAttribute": true,
+			"hrefNormalized": true,
+			"html5Clone": true,
+			"htmlSerialize": true,
+			"inlineBlockNeedsLayout": false,
+			"input": true,
+			"leadingWhitespace": true,
+			"noCloneChecked": false,
+			"noCloneEvent": true,
+			"opacity": true,
+			"optDisabled": true,
+			"optSelected": false,
+			"ownLast": false,
+			"pixelPosition": true,
+			"radioValue": false,
+			"reliableHiddenOffsets": true,
+			"reliableMarginRight": true,
+			"shrinkWrapBlocks": false,
+			"style": true,
+			"submitBubbles": true,
+			"tbody": true
+		};
 	} else if ( /msie 10\.0/i.test( userAgent ) ) {
 		expected = {
 			"ajax": true,
@@ -341,7 +378,7 @@ testIframeWithCallback( "Check CSP (https://developer.mozilla.org/en-US/docs/Sec
 			"submitBubbles": false,
 			"tbody": false
 		};
-	} else if ( /6\.0\.\d+ safari/i.test( userAgent ) ) {
+	} else if ( /7\.0(\.\d+|) safari/i.test( userAgent ) ) {
 		expected = {
 			"ajax": true,
 			"appendChecked": true,
@@ -378,10 +415,47 @@ testIframeWithCallback( "Check CSP (https://developer.mozilla.org/en-US/docs/Sec
 			"submitBubbles": true,
 			"tbody": true
 		};
-	} else if ( /5\.1\.1 safari/i.test( userAgent ) ) {
+	} else if ( /6\.0(\.\d+|) safari/i.test( userAgent ) ) {
 		expected = {
 			"ajax": true,
-			"appendChecked": false,
+			"appendChecked": true,
+			"boxSizing": true,
+			"boxSizingReliable": true,
+			"changeBubbles": true,
+			"checkClone": true,
+			"checkOn": true,
+			"clearCloneStyle": true,
+			"cors": true,
+			"cssFloat": true,
+			"deleteExpando": true,
+			"enctype": true,
+			"focusinBubbles": false,
+			"getSetAttribute": true,
+			"hrefNormalized": true,
+			"html5Clone": true,
+			"htmlSerialize": true,
+			"inlineBlockNeedsLayout": false,
+			"input": true,
+			"leadingWhitespace": true,
+			"noCloneChecked": true,
+			"noCloneEvent": true,
+			"opacity": true,
+			"optDisabled": true,
+			"optSelected": true,
+			"ownLast": false,
+			"pixelPosition": false,
+			"radioValue": true,
+			"reliableHiddenOffsets": true,
+			"reliableMarginRight": true,
+			"shrinkWrapBlocks": false,
+			"style": true,
+			"submitBubbles": true,
+			"tbody": true
+		};
+	} else if ( /5\.1(\.\d+|) safari/i.test( userAgent ) ) {
+		expected = {
+			"ajax": true,
+			"appendChecked": true,
 			"boxSizing": true,
 			"boxSizingReliable": true,
 			"changeBubbles": true,
@@ -444,6 +518,43 @@ testIframeWithCallback( "Check CSP (https://developer.mozilla.org/en-US/docs/Sec
 			"optSelected": true,
 			"ownLast": false,
 			"pixelPosition": true,
+			"radioValue": true,
+			"reliableHiddenOffsets": true,
+			"reliableMarginRight": true,
+			"shrinkWrapBlocks": false,
+			"style": true,
+			"submitBubbles": true,
+			"tbody": true
+		};
+	} else if ( /iphone os 6_0/i.test( userAgent ) ) {
+		expected = {
+			"ajax": true,
+			"appendChecked": true,
+			"boxSizing": true,
+			"boxSizingReliable": true,
+			"changeBubbles": true,
+			"checkClone": true,
+			"checkOn": true,
+			"clearCloneStyle": true,
+			"cors": true,
+			"cssFloat": true,
+			"deleteExpando": true,
+			"enctype": true,
+			"focusinBubbles": false,
+			"getSetAttribute": true,
+			"hrefNormalized": true,
+			"html5Clone": true,
+			"htmlSerialize": true,
+			"inlineBlockNeedsLayout": false,
+			"input": true,
+			"leadingWhitespace": true,
+			"noCloneChecked": true,
+			"noCloneEvent": true,
+			"opacity": true,
+			"optDisabled": true,
+			"optSelected": true,
+			"ownLast": false,
+			"pixelPosition": false,
 			"radioValue": true,
 			"reliableHiddenOffsets": true,
 			"reliableMarginRight": true,

@@ -10,7 +10,6 @@ module.exports = function( grunt ) {
 	}
 
 	var gzip = require( "gzip-js" ),
-		path = require( "path" ),
 		srcHintOptions = readOptionalJSON( "src/.jshintrc" );
 
 	// The concatenated file won't pass onevar
@@ -45,14 +44,28 @@ module.exports = function( grunt ) {
 				}
 			}
 		},
-		bower: {
-			install: {
+		bowercopy: {
+			options: {
+				clean: true
+			},
+			src: {
+				files: {
+					"src/sizzle/dist": "sizzle/dist",
+					"src/sizzle/test/data": "sizzle/test/data",
+					"src/sizzle/test/unit": "sizzle/test/unit",
+					"src/sizzle/test/index.html": "sizzle/test/index.html",
+					"src/sizzle/test/jquery.js": "sizzle/test/jquery.js"
+				}
+			},
+			tests: {
 				options: {
-					targetDir: "bower_modules",
-					cleanup: true,
-					layout: function( type ) {
-						return path.join( type );
-					}
+					destPrefix: "test/libs"
+				},
+				files: {
+					"qunit": "qunit/qunit",
+					"require.js": "requirejs/require.js",
+					"sinon/fake_timers.js": "sinon/lib/sinon/util/fake_timers.js",
+					"sinon/timers_ie.js": "sinon/lib/sinon/util/timers_ie.js"
 				}
 			}
 		},
@@ -70,27 +83,18 @@ module.exports = function( grunt ) {
 			}
 		},
 		jshint: {
-			src: {
-				src: "src/**/*.js",
+			all: {
+				src: [
+					"src/**/*.js", "Gruntfile.js", "test/**/*.js", "build/tasks/*",
+					"build/{bower-install,release-notes,release}.js"
+				],
 				options: {
-					jshintrc: "src/.jshintrc"
+					jshintrc: true
 				}
 			},
 			dist: {
 				src: "dist/jquery.js",
 				options: srcHintOptions
-			},
-			grunt: {
-				src: [ "Gruntfile.js", "build/tasks/*", "build/{bower-install,release-notes,release}.js" ],
-				options: {
-					jshintrc: ".jshintrc"
-				}
-			},
-			tests: {
-				src: "test/**/*.js",
-				options: {
-					jshintrc: "test/.jshintrc"
-				}
 			}
 		},
 		jscs: {
@@ -102,7 +106,7 @@ module.exports = function( grunt ) {
 			tests: "ajax attributes callbacks core css data deferred dimensions effects event manipulation offset queue selector serialize support traversing Sizzle".split( " " )
 		},
 		watch: {
-			files: [ "<%= jshint.grunt.src %>", "<%= jshint.tests.src %>", "src/**/*.js" ],
+			files: [ "<%= jshint.all.src %>" ],
 			tasks: "dev"
 		},
 		uglify: {
@@ -119,7 +123,7 @@ module.exports = function( grunt ) {
 						ascii_only: true
 					},
 					banner: "/*! jQuery v<%= pkg.version %> | " +
-						"(c) 2005, 2013 jQuery Foundation, Inc. | " +
+						"(c) 2005, <%= grunt.template.today('yyyy') %> jQuery Foundation, Inc. | " +
 						"jquery.org/license */",
 					compress: {
 						hoist_funs: false,
@@ -136,6 +140,9 @@ module.exports = function( grunt ) {
 
 	// Integrate jQuery specific tasks
 	grunt.loadTasks( "build/tasks" );
+
+	// Alias bower to bowercopy
+	grunt.registerTask( "bower", "bowercopy" );
 
 	// Short list as a high frequency watch task
 	grunt.registerTask( "dev", [ "build:*:*" ] );

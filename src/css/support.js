@@ -5,9 +5,10 @@ define([
 
 (function() {
 	var a, reliableHiddenOffsetsVal, boxSizingVal, boxSizingReliableVal,
-		pixelPositionVal, reliableMarginRightVal,
+		pixelPositionVal,
 		div = document.createElement( "div" ),
 		containerStyles = "border:0;width:0;height:0;position:absolute;top:0;left:-9999px",
+		// Support: Firefox<29, Android 2.3 (Prefixed box-sizing versions).
 		divReset =
 			"-webkit-box-sizing:content-box;-moz-box-sizing:content-box;box-sizing:content-box;" +
 			"display:block;padding:0;margin:0;border:0";
@@ -106,11 +107,16 @@ define([
 			return pixelPositionVal;
 		},
 
+		// Support: Android 2.3
 		reliableMarginRight: function() {
-			var body, container, div, marginDiv;
+			var body, container, div, marginDiv,
+				// Support: IE<9.
+				// IE should pass the test but we're using getComputedStyle
+				// to compute it so just return true if the method is not present.
+				reliableMarginRightVal = true;
 
 			// Use window.getComputedStyle because jsdom on node.js will break without it.
-			if ( reliableMarginRightVal == null && window.getComputedStyle ) {
+			if ( window.getComputedStyle ) {
 				body = document.getElementsByTagName( "body" )[ 0 ];
 				if ( !body ) {
 					// Test fired too early or in an unsupported environment, exit.
@@ -157,6 +163,7 @@ define([
 
 		body.appendChild( container ).appendChild( div );
 
+		// Support: Firefox<29, Android 2.3 (Prefixed box-sizing versions).
 		div.style.cssText =
 			"-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;" +
 				"position:absolute;display:block;padding:1px;border:1px;width:4px;" +
@@ -171,7 +178,6 @@ define([
 		// Will be changed later if needed.
 		boxSizingReliableVal = true;
 		pixelPositionVal = false;
-		reliableMarginRightVal = true;
 
 		// Use window.getComputedStyle because jsdom on node.js will break without it.
 		if ( window.getComputedStyle ) {

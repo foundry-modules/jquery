@@ -26,7 +26,7 @@ module.exports = function( grunt ) {
 				endFile: "src/outro.js"
 			},
 			paths: {
-				sizzle: "../bower_modules/sizzle/dist/sizzle"
+				sizzle: "sizzle/dist/sizzle"
 			},
 			rawText: {},
 			onBuildWrite: convert
@@ -42,6 +42,7 @@ module.exports = function( grunt ) {
 	 * @param {String} contents The contents to be written (including their AMD wrappers)
 	 */
 	function convert( name, path, contents ) {
+		var amdName;
 		// Convert var modules
 		if ( /.\/var\//.test( path ) ) {
 			contents = contents
@@ -53,6 +54,12 @@ module.exports = function( grunt ) {
 			contents = "var Sizzle =\n" + contents
 				// Remove EXPOSE lines from Sizzle
 				.replace( /\/\/\s*EXPOSE[\w\W]*\/\/\s*EXPOSE/, "return Sizzle;" );
+
+		// AMD Name
+		} else if ( (amdName = grunt.option( "amd" )) != null && /^exports\/amd$/.test( name ) ) {
+			// Remove the comma for anonymous defines
+			contents = contents
+				.replace( /(\s*)"jquery"(\,\s*)/, amdName ? "$1\"" + amdName + "\"$2" : "" );
 
 		} else {
 
@@ -87,7 +94,7 @@ module.exports = function( grunt ) {
 		"build",
 		"Concatenate source, remove sub AMD definitions, (include/exclude modules with +/- flags), embed date/version",
 	function() {
-		var flag,
+		var flag, index,
 			done = this.async(),
 			flags = this.flags,
 			optIn = flags[ "*" ],
@@ -186,6 +193,13 @@ module.exports = function( grunt ) {
 			excluder( flag );
 		}
 
+		// Replace exports/global with a noop noConflict
+		if ( (index = excluded.indexOf( "exports/global" )) > -1 ) {
+			config.rawText[ "exports/global" ] = "define(['../core']," +
+				"function( jQuery ) {\njQuery.noConflict = function() {};\n});";
+			excluded.splice( index, 1 );
+		}
+
 		grunt.verbose.writeflags( excluded, "Excluded" );
 		grunt.verbose.writeflags( included, "Included" );
 
@@ -241,11 +255,11 @@ module.exports = function( grunt ) {
 	//
 	//   grunt build:*:*:+ajax:-dimensions:-effects:-offset
 	grunt.registerTask( "custom", function() {
-		var args = [].slice.call( arguments ),
+		var args = this.args,
 			modules = args.length ? args[ 0 ].replace( /,/g, ":" ) : "";
 
 		grunt.log.writeln( "Creating custom build...\n" );
 
-		grunt.task.run([ "build:*:*:" + modules, "uglify", "dist" ]);
+		grunt.task.run([ "build:*:*" + (modules ? ":" + modules : ""), "uglify", "dist" ]);
 	});
 };

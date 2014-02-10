@@ -592,7 +592,6 @@ test("jQuery('html')", function() {
 
 	var s, div, j;
 
-	QUnit.reset();
 	jQuery["foo"] = false;
 	s = jQuery("<script>jQuery.foo='test';</script>")[0];
 	ok( s, "Creating a script" );
@@ -608,7 +607,6 @@ test("jQuery('html')", function() {
 	equal( div.childNodes[1].nodeType, 1, "Paragraph." );
 	equal( div.childNodes[1].firstChild.nodeType, 3, "Paragraph text." );
 
-	QUnit.reset();
 	ok( jQuery("<link rel='stylesheet'/>")[0], "Creating a link" );
 
 	ok( !jQuery("<script/>")[0].parentNode, "Create a script" );
@@ -1312,7 +1310,7 @@ test("jQuery.parseHTML", function() {
 	equal( jQuery.parseHTML(), null, "Nothing in, null out." );
 	equal( jQuery.parseHTML( null ), null, "Null in, null out." );
 	equal( jQuery.parseHTML( "" ), null, "Empty string in, null out." );
-	raises(function() {
+	throws(function() {
 		jQuery.parseHTML( "<div></div>", document.getElementById("form") );
 	}, "Passing an element as the context raises an exception (context should be a document)");
 
@@ -1370,34 +1368,34 @@ test("jQuery.parseJSON", function() {
 	deepEqual( jQuery.parseJSON("\n{\"test\":1}\t"), { "test": 1 },
 		"Leading and trailing whitespace are ignored" );
 
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON();
 	}, null, "Undefined raises an error" );
-	raises( function() {
+	throws(function() {
 		jQuery.parseJSON( "" );
 	}, null, "Empty string raises an error" );
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON("''");
 	}, null, "Single-quoted string raises an error" );
 	/*
 
 	// Broken on IE8
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON("\" \\a \"");
 	}, null, "Invalid string escape raises an error" );
 
 	// Broken on IE8, Safari 5.1 Windows
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON("\"\t\"");
 	}, null, "Unescaped control character raises an error" );
 
 	// Broken on IE8
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON(".123");
 	}, null, "Number with no integer component raises an error" );
 
 	*/
-	raises(function() {
+	throws(function() {
 		var result = jQuery.parseJSON("0101");
 
 		// Support: IE9+
@@ -1406,22 +1404,22 @@ test("jQuery.parseJSON", function() {
 			throw new Error("close enough");
 		}
 	}, null, "Leading-zero number raises an error or is parsed as decimal" );
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON("{a:1}");
 	}, null, "Unquoted property raises an error" );
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON("{'a':1}");
 	}, null, "Single-quoted property raises an error" );
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON("[,]");
 	}, null, "Array element elision raises an error" );
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON("{},[]");
 	}, null, "Comma expression raises an error" );
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON("[]\n,{}");
 	}, null, "Newline-containing comma expression raises an error" );
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON("\"\"\n\"\"");
 	}, null, "Automatic semicolon insertion raises an error" );
 
