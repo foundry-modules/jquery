@@ -621,10 +621,10 @@ jQuery.extend({
 		// Get transport
 		transport = inspectPrefiltersOrTransports( transports, s, options, jqXHR );
 
-		// If no transport, we auto-abort
-		if ( !transport ) {
-			done( -1, "No Transport" );
-		} else {
+		// FOUNDRY_HACK
+		// Method to trigger ajax send
+		jqXHR.send = function() {
+
 			jqXHR.readyState = 1;
 
 			// Send global event
@@ -650,6 +650,17 @@ jQuery.extend({
 					throw e;
 				}
 			}
+		}
+
+		// If no transport, we auto-abort
+		if ( !transport ) {
+			done( -1, "No Transport" );
+		} else {
+
+			// FOUNDRY_HACK
+			// Autostart option. If autostart is false,
+			// ajax will not begin until send() is manually called.
+			options.autostart!==false && jqXHR.send();
 		}
 
 		// Callback for when everything is done
